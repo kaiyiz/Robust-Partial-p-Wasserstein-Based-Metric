@@ -165,7 +165,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, all_res = None, i = 0, j = 
         total_time = time_spent/(amount_of_work_done/(size[0]*size[1]))
         print("estimate to finish the job in {}s".format(total_time-time_spent))
 
-    all_res[i,j] = np.array([alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost])
+    all_res[i,j,:8] = np.array([alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost])
 
 if __name__ == "__main__":
     # LOAD Data

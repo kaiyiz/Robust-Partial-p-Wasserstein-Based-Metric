@@ -101,7 +101,7 @@ def rand_pick_mnist_09(mnist, mnist_labels, seed=1):
     
     return mnist_pick, mnist_pick_label
 
-def OTP_metric(X=None, Y=None, dist=None, delta=0.1, matrix_scaler=1, all_res=None, i=0, j=0, time_start=NONE):
+def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=None, i=0, j=0, time_start=NONE):
     # delta : acceptable additive error
     # q_idx : index to get returned values
     nz = len(X)
@@ -119,7 +119,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, matrix_scaler=1, all_res=No
         cumCost = cumCost * 0.0
     else:
         cumCost = cumCost / (cumCost[-1] / real_total_cost)
-    cumCost *= matrix_scaler
+    cumCost *= metric_scaler
     totalCost = cumCost[-1]
     if totalCost == 0:
         normalized_cumcost = (cumCost) * 0.0

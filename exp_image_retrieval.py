@@ -59,6 +59,7 @@ if __name__ == "__main__":
     parser.add_argument('--noise_d', type=float, default=0.1)
     parser.add_argument('--top_k', type=int, default=10)
     parser.add_argument('--verbose', type=bool, default=False)
+    parser.add_argument('--metric_scaler', type=float, default=1.0)
     args = parser.parse_args()
     print(args)
 
@@ -70,13 +71,14 @@ if __name__ == "__main__":
     noise_d = args.noise_d
     top_k = args.top_k
     verbose = args.verbose
+    metric_scaler = args.metric_scaler
     noise_rates = np.arange(noise_st, noise_ed+noise_d, noise_d)
 
     img_retrival_res = np.zeros((len(noise_rates), 10))
     cur_ind = 0
     for noise in noise_rates:
         noise = round(noise, 2)
-        argparse = "n_{}_delta_{}_data_{}_noise_{}".format(n, delta, data_name, noise)
+        argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
         print(argparse)
         '''
         alpha: maximum transported mass where partial OT cost less than 1-eps
@@ -139,5 +141,5 @@ if __name__ == "__main__":
 
         cur_ind += 1
     
-    argparse = "n_{}_delta_{}_data_{}_noise_st_{}_noise_ed_{}_noise_d_{}".format(n, delta, data_name, noise_st, noise_ed, noise_d)
+    argparse = "n_{}_delta_{}_data_{}_noise_st_{}_noise_ed_{}_noise_d_{}_ms_{}".format(n, delta, data_name, noise_st, noise_ed, noise_d, metric_scaler)
     np.savetxt("./results/img_retrival_res_{}.csv".format(argparse), img_retrival_res, delimiter=",")

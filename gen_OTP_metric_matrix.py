@@ -101,7 +101,7 @@ def rand_pick_mnist_09(mnist, mnist_labels, seed=1):
     
     return mnist_pick, mnist_pick_label
 
-def OTP_metric(X=None, Y=None, dist=None, delta=0.1, all_res = None, i = 0, j = 0, time_start = NONE):
+def OTP_metric(X=None, Y=None, dist=None, delta=0.1, matrix_scaler=1, all_res=None, i=0, j=0, time_start=NONE):
     # delta : acceptable additive error
     # q_idx : index to get returned values
     nz = len(X)
@@ -119,14 +119,15 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, all_res = None, i = 0, j = 
         cumCost = cumCost * 0.0
     else:
         cumCost = cumCost / (cumCost[-1] / real_total_cost)
+    cumCost *= matrix_scaler
     totalCost = cumCost[-1]
     if totalCost == 0:
         normalized_cumcost = (cumCost) * 0.0
     else:
         normalized_cumcost = (cumCost)/(1.0 * totalCost)
 
-    scale_factor = 4.0*np.max(dist)/delta
-    maxdual = APinfo_cleaned[:,4]/scale_factor
+    alphaa = 4.0*np.max(dist)/delta
+    maxdual = APinfo_cleaned[:,4]/alphaa
     final_dual = maxdual[-1]
     if final_dual == 0:
         normalized_maxdual = maxdual * 0.0
@@ -165,7 +166,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, all_res = None, i = 0, j = 
         total_time = time_spent/(amount_of_work_done/(size[0]*size[1]))
         print("estimate to finish the job in {}s".format(total_time-time_spent))
 
-    all_res[i,j,:8] = np.array([alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost])
+    all_res[i,j,:9] = np.array([alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost])
 
 if __name__ == "__main__":
     # LOAD Data
@@ -174,6 +175,7 @@ if __name__ == "__main__":
     parser.add_argument('--delta', type=float, default=0.01)
     parser.add_argument('--data_name', type=str, default='mnist')
     parser.add_argument('--noise', type=float, default=0.1)
+    parser.add_argument('--metric_scaler', type=float, default=1.0)
     args = parser.parse_args()
     print(args)
 
@@ -181,7 +183,8 @@ if __name__ == "__main__":
     delta = args.delta
     data_name = args.data_name
     noise = args.noise
-    argparse = "n_{}_delta_{}_data_{}_noise_{}".format(n, delta, data_name, noise)
+    metric_scaler = args.metric_scaler
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
 
     if os.path.exists('./data/mnist.npy'):
         mnist = np.load('./data/mnist.npy') # 60k x 28 x 28
@@ -200,9 +203,8 @@ if __name__ == "__main__":
     all_res = np.zeros((n,n,10))
     dist = computeDistMatrixGrid(28)
     dist = dist/np.max(dist)
-
     start_time = time.time()
-    Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(mnist_pick_a[i,:], mnist_pick_b_noise[j,:], dist, delta, all_res, i, j, start_time) for i in range(n) for j in range(n))
+    Parallel(n_jobs=128, prefer="threads")(delayed(OTP_metric)(mnist_pick_a[i,:], mnist_pick_b_noise[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
     end_time = time.time()
 
     L1_metric = cdist(mnist_pick_a.reshape(int(n),-1), mnist_pick_b_noise.reshape(int(n),-1), metric='minkowski', p=1)

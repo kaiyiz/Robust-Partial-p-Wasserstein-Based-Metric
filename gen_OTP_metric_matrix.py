@@ -204,7 +204,7 @@ if __name__ == "__main__":
     dist = computeDistMatrixGrid(28)
     dist = dist/np.max(dist)
     start_time = time.time()
-    Parallel(n_jobs=128, prefer="threads")(delayed(OTP_metric)(mnist_pick_a[i,:], mnist_pick_b_noise[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+    Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(mnist_pick_a[i,:], mnist_pick_b_noise[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
     end_time = time.time()
 
     L1_metric = cdist(mnist_pick_a.reshape(int(n),-1), mnist_pick_b_noise.reshape(int(n),-1), metric='minkowski', p=1)

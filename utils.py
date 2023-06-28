@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import norm
 
 def load_data(n, dataset_name):
     npzfiles = np.load('./results/{}.npz'.format(dataset_name))
@@ -19,9 +20,13 @@ def load_data(n, dataset_name):
     return  data_a, data_b, data_label, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric
 
 def add_niose(data, noise_level=0.1):
-    noise = np.random.rand(data.shape[0], data.shape[1])
-    rwo_sum = np.sum(data, axis=1)
-    noise = noise / np.sum(noise, axis=1).reshape(-1,1) * rwo_sum.reshape(-1,1)
+    m = data.shape[0]
+    n = data.shape[1]
+    loc = np.repeat(np.arange(n)[np.newaxis,:], m, axis=0)
+    mu = np.random.randint(0, n, m)[:,np.newaxis]
+    noise = norm.pdf(loc, mu, n*0.1)
+    noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)
+    # noise = np.random.rand(data.shape[0], data.shape[1])
     data = (1-noise_level)*data + noise_level * noise
     return data
 

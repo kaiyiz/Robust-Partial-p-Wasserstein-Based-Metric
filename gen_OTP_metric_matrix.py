@@ -24,7 +24,7 @@ jpype.startJVM("-Xmx10000m", classpath=['./optimaltransport.jar'])
 from optimaltransport import Mapping
 
 from kneed import KneeLocator
-from utils import add_niose
+from utils import add_niose, add_geometric_niose
 
 
 """
@@ -197,7 +197,8 @@ if __name__ == "__main__":
     mnist_pick_a, mnist_pick_label = rand_pick_mnist(mnist, mnist_labels, n, 0)
     mnist_pick_b, mnist_pick_label = rand_pick_mnist(mnist, mnist_labels, n, 1)
 
-    mnist_pick_b_noise = add_niose(mnist_pick_b, noise_level=noise)
+    # mnist_pick_b_noise = add_niose(mnist_pick_b, noise_level=noise)
+    mnist_pick_b_noise = add_geometric_niose(mnist_pick_b, noise_level=noise)
     # mnist_pick, mnist_pick_label = rand_pick_mnist_09(mnist, mnist_labels, 1)
 
     all_res = np.zeros((n,n,10))

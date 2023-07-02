@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import norm, multivariate_normal
 
 def load_data(n, dataset_name):
     npzfiles = np.load('./results/{}.npz'.format(dataset_name))
@@ -27,6 +27,30 @@ def add_niose(data, noise_level=0.1):
     noise = norm.pdf(loc, mu, n*0.1)
     noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)
     # noise = np.random.rand(data.shape[0], data.shape[1])
+    data = (1-noise_level)*data + noise_level * noise
+    return data
+
+def add_geometric_niose(data, noise_level=0.1):
+    # each row is a flattened image, I want to add a 2d normal noise to each image at a random locations
+    # noise_level is the percentage of noise added to the image
+    # mnist is 28x28 images
+    # create a 28x28 grid, each cell is a pixel
+    # for each image, add a 2d normal noise to a random location
+    m = data.shape[0]
+    n = data.shape[1]
+    nn = int(np.sqrt(n))
+    mu_loc = [(nn/8, nn/8), (nn/8, 3*nn/8), (nn/8, 5*nn/8), (nn/8, 7*nn/8), (3*nn/8, nn/8), (3*nn/8, 7*nn/8), (5*nn/8, nn/8), (5*nn/8, 7*nn/8), (7*nn/8, nn/8), (7*nn/8, 3*nn/8), (7*nn/8, 5*nn/8), (7*nn/8, 7*nn/8)]
+    noise = np.zeros((m, n))
+    for i in range(m):
+        mu = np.random.choice(len(mu_loc))
+        mu = mu_loc[mu]
+        x = np.arange(nn)
+        y = np.arange(nn)
+        X, Y = np.meshgrid(x, y)
+        pos = np.dstack((X, Y))
+        rv = multivariate_normal(mu, [[n*0.05, 0], [0, n*0.05]])
+        noise[i,:] = rv.pdf(pos).reshape(-1)
+    noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)
     data = (1-noise_level)*data + noise_level * noise
     return data
 

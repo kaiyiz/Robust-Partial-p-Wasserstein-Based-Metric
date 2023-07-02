@@ -30,7 +30,7 @@ def add_niose(data, noise_level=0.1):
     data = (1-noise_level)*data + noise_level * noise
     return data
 
-def add_geometric_niose(data, noise_level=0.1):
+def add_geometric_noise(data, noise_level=0.1):
     # each row is a flattened image, I want to add a 2d normal noise to each image at a random locations
     # noise_level is the percentage of noise added to the image
     # mnist is 28x28 images

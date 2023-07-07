@@ -19,15 +19,33 @@ def load_data(n, dataset_name):
     L1_metric = all_res[:,:,9]
     return  data_a, data_b, data_label, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric
 
-def add_niose(data, noise_level=0.1):
+def add_niose(data, noise_type = "uniform", noise_level=0.1):
     m = data.shape[0]
     n = data.shape[1]
-    loc = np.repeat(np.arange(n)[np.newaxis,:], m, axis=0)
-    mu = np.random.randint(0, n, m)[:,np.newaxis]
-    noise = norm.pdf(loc, mu, n*0.1)
-    noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)
-    # noise = np.random.rand(data.shape[0], data.shape[1])
-    data = (1-noise_level)*data + noise_level * noise
+    if noise_type == "uniform":
+        noise = np.random.rand(m, n)
+    elif noise_type == "normal":
+        loc = np.repeat(np.arange(n)[np.newaxis,:], m, axis=0)
+        mu = np.random.randint(0, n, m)[:,np.newaxis]
+        noise = norm.pdf(loc, mu, n*0.1)
+        noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)
+    elif noise_type == "geo_normal":
+        nn = int(np.sqrt(n))
+        mu_loc = [(nn/8, nn/8), (nn/8, 3*nn/8), (nn/8, 5*nn/8), (nn/8, 7*nn/8), (3*nn/8, nn/8), (3*nn/8, 7*nn/8), (5*nn/8, nn/8), (5*nn/8, 7*nn/8), (7*nn/8, nn/8), (7*nn/8, 3*nn/8), (7*nn/8, 5*nn/8), (7*nn/8, 7*nn/8)]
+        noise = np.zeros((m, n))
+        for i in range(m):
+            mu = np.random.choice(len(mu_loc))
+            mu = mu_loc[mu]
+            x = np.arange(nn)
+            y = np.arange(nn)
+            X, Y = np.meshgrid(x, y)
+            pos = np.dstack((X, Y))
+            rv = multivariate_normal(mu, [[n*0.05, 0], [0, n*0.05]])
+            noise[i,:] = rv.pdf(pos).reshape(-1)
+        noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)
+    else:
+        raise ValueError("noise type not found")
+    data = (1 - noise_level) * data + noise_level * noise
     return data
 
 def add_geometric_noise(data, noise_level=0.1):

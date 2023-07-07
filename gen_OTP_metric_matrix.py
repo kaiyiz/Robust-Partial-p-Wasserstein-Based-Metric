@@ -176,6 +176,8 @@ if __name__ == "__main__":
     parser.add_argument('--data_name', type=str, default='mnist')
     parser.add_argument('--noise', type=float, default=0.1)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
+    parser.add_argument('--noise_type', type=str, default="uniform")
+
     args = parser.parse_args()
     print(args)
 
@@ -184,7 +186,8 @@ if __name__ == "__main__":
     data_name = args.data_name
     noise = args.noise
     metric_scaler = args.metric_scaler
-    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
+    noise_type = args.noise_type
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}".format(n, delta, data_name, noise, metric_scaler, noise_type)
 
     if os.path.exists('./data/mnist.npy'):
         mnist = np.load('./data/mnist.npy') # 60k x 28 x 28

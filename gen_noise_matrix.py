@@ -24,7 +24,7 @@ noise_rates = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 # Call gen_OTP_metric_matrix.py for each noise rate
 for noise_rate in noise_rates:
     # Define the command-line arguments to use
-    args = ['python', 'gen_OTP_metric_matrix.py', '--noise', str(noise_rate), '--n', str(n), '--delta', str(delta), '--data_name', data_name, '--metric_scaler', str(metric_scaler), '--noise_type', noise_type, '--transport_type', args.transport_type]
+    args = ['python', 'gen_OTP_metric_matrix.py', '--noise', str(noise_rate), '--n', str(n), '--delta', str(delta), '--data_name', data_name, '--metric_scaler', str(metric_scaler), '--noise_type', noise_type, '--transport_type', transport_type]
 
     # Run the script with the command-line arguments
     subprocess.run(args)

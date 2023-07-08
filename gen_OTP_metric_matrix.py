@@ -178,7 +178,7 @@ if __name__ == "__main__":
     metric_scaler = args.metric_scaler
     noise_type = args.noise_type
     transport_type = args.transport_type
-    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, grd_dist_type)
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, transport_type)
 
     if os.path.exists('./data/mnist.npy'):
         mnist = np.load('./data/mnist.npy') # 60k x 28 x 28

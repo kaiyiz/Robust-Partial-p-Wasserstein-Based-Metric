@@ -207,7 +207,7 @@ if __name__ == "__main__":
         m = mnist_pick_a.shape[1]
         a = np.ones(m)/m
         b = np.ones(m)/m
-        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, get_ground_dist(mnist_pick_a[i,:].reshape(-1,1), mnist_pick_b_noise[j,:].reshape(-1,1), grd_dist_type="hist"), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, get_ground_dist(mnist_pick_a[i,:].reshape(-1,1), mnist_pick_b_noise[j,:].reshape(-1,1), transport_type="hist"), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
     else:
         raise ValueError("transport_type not found")

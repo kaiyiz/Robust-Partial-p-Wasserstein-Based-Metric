@@ -24,7 +24,7 @@ jpype.startJVM("-Xmx10000m", classpath=['./optimaltransport.jar'])
 from optimaltransport import Mapping
 
 from kneed import KneeLocator
-from utils import add_niose, add_geometric_noise
+from utils import add_niose, get_ground_dist
 
 
 """
@@ -37,17 +37,6 @@ def e_dist(A, B):
     B_n = (B**2).sum(axis=1).reshape(1,-1)
     inner = np.matmul(A, B.T)
     return A_n - 2*inner + B_n
-
-def computeDistMatrixGrid(m,metric='euclidean'):
-    A = np.zeros((m**2,2))
-    iter = 0
-    for i in range(m):
-        for j in range(m):
-            A[iter,0] = i
-            A[iter,1] = j
-            iter += 1
-    dist = cdist(A, A, metric)
-    return dist
 
 def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
     # eps = Contamination proportion
@@ -177,6 +166,7 @@ if __name__ == "__main__":
     parser.add_argument('--noise', type=float, default=0.1)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--noise_type', type=str, default="uniform")
+    parser.add_argument('--transport_type', type=str, default="geo")
 
     args = parser.parse_args()
     print(args)
@@ -187,7 +177,8 @@ if __name__ == "__main__":
     noise = args.noise
     metric_scaler = args.metric_scaler
     noise_type = args.noise_type
-    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}".format(n, delta, data_name, noise, metric_scaler, noise_type)
+    transport_type = args.transport_type
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, grd_dist_type)
 
     if os.path.exists('./data/mnist.npy'):
         mnist = np.load('./data/mnist.npy') # 60k x 28 x 28
@@ -200,16 +191,27 @@ if __name__ == "__main__":
     mnist_pick_a, mnist_pick_label = rand_pick_mnist(mnist, mnist_labels, n, 0)
     mnist_pick_b, mnist_pick_label = rand_pick_mnist(mnist, mnist_labels, n, 1)
 
-    # mnist_pick_b_noise = add_niose(mnist_pick_b, noise_level=noise)
-    mnist_pick_b_noise = add_geometric_noise(mnist_pick_b, noise_level=noise)
+    mnist_pick_b_noise = add_niose(mnist_pick_b, noise_type = noise_type, noise_level=noise)
+    # mnist_pick_b_noise = add_geometric_noise(mnist_pick_b, noise_level=noise)
     # mnist_pick, mnist_pick_label = rand_pick_mnist_09(mnist, mnist_labels, 1)
 
     all_res = np.zeros((n,n,10))
-    dist = computeDistMatrixGrid(28)
-    dist = dist/np.max(dist)
-    start_time = time.time()
-    Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(mnist_pick_a[i,:], mnist_pick_b_noise[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
-    end_time = time.time()
+
+    if transport_type == "geo":
+        dist = get_ground_dist(mnist_pick_a[0,:], mnist_pick_b_noise[1,:], transport_type)
+        start_time = time.time()
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(mnist_pick_a[i,:], mnist_pick_b_noise[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+        end_time = time.time()
+    elif transport_type == "hist":
+        start_time = time.time()
+        m = mnist_pick_a.shape[1]
+        a = np.ones(m)/m
+        b = np.ones(m)/m
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, get_ground_dist(mnist_pick_a[i,:].reshape(-1,1), mnist_pick_b_noise[j,:].reshape(-1,1), grd_dist_type="hist"), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+        end_time = time.time()
+    else:
+        raise ValueError("transport_type not found")
+
 
     L1_metric = cdist(mnist_pick_a.reshape(int(n),-1), mnist_pick_b_noise.reshape(int(n),-1), metric='minkowski', p=1)
     all_res[:,:,9] = L1_metric

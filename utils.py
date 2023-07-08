@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import norm, multivariate_normal
+from scipy.spatial.distance import cdist
 
 def load_data(n, dataset_name):
     npzfiles = np.load('./results/{}.npz'.format(dataset_name))
@@ -98,3 +99,26 @@ def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
     mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
 
     return mnist_pick, mnist_pick_label
+
+def get_ground_dist(a, b, transport_type="geo"):
+    m = a.shape[0]
+    if transport_type == "geo":
+        dist = computeDistMatrixGrid2d(int(np.sqrt(m)))
+        dist = dist / np.max(dist) 
+    elif transport_type == "hist":
+        dist = cdist(a, b, metric='minkowski', p=1)
+        dist = dist
+    else:
+        raise ValueError("dist_type not found")
+    return dist
+
+def computeDistMatrixGrid2d(n,metric='euclidean'):
+    A = np.zeros((n**2,2))
+    iter = 0
+    for i in range(n):
+        for j in range(n):
+            A[iter,0] = i
+            A[iter,1] = j
+            iter += 1
+    dist = cdist(A, A, metric)
+    return dist

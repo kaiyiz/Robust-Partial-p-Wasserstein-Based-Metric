@@ -26,6 +26,8 @@ if __name__ == "__main__":
     parser.add_argument('--maxiter', type=int, default=1000)
     parser.add_argument('--verbose', type=bool, default=False)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
+    parser.add_argument('--noise_type', type=str, default="uniform")
+    parser.add_argument('--transport_type', type=str, default="geo")
     args = parser.parse_args()
     print(args)
 
@@ -38,13 +40,15 @@ if __name__ == "__main__":
     maxiter = args.maxiter
     verbose = args.verbose
     metric_scaler = args.metric_scaler
+    noise_type = args.noise_type
+    transport_type = args.transport_type
     noise_rates = np.arange(noise_st, noise_ed+noise_d, noise_d)
 
     nmi_res = np.zeros((len(noise_rates), 10))
     cur_ind = 0
     for noise in noise_rates:
         noise = round(noise, 2)
-        argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
+        argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, transport_type)
         print(argparse)
 
         '''
@@ -130,5 +134,5 @@ if __name__ == "__main__":
             print("nmi_realtotalCost: {}".format(nmi_realtotalCost))
 
     # save the result as csv file
-    argparse = "n_{}_delta_{}_data_{}_noise_st_{}_noise_ed_{}_noise_d_{}_ms_{}".format(n, delta, data_name, noise_st, noise_ed, noise_d, metric_scaler)
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, transport_type)
     np.savetxt("./results/nmi_res_{}.csv".format(argparse), nmi_res, delimiter=",")

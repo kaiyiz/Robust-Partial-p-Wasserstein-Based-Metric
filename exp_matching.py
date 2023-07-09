@@ -11,7 +11,7 @@ import matplotlib
 import ot
 
 from scipy.spatial.distance import cdist
-from utils import load_data
+from utils import load_data, load_computed_matrix
 
 def split_metric(metric, data_label, seed=0):
     np.random.seed(seed)
@@ -57,8 +57,6 @@ if __name__ == "__main__":
     parser.add_argument('--noise_d', type=float, default=0.1)
     parser.add_argument('--verbose', type=bool, default=False)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
-    parser.add_argument('--noise_type', type=str, default="uniform")
-    parser.add_argument('--transport_type', type=str, default="geo")
     args = parser.parse_args()
     print(args)
 
@@ -70,8 +68,6 @@ if __name__ == "__main__":
     noise_d = args.noise_d
     verbose = args.verbose
     metric_scaler = args.metric_scaler
-    noise_type = args.noise_type
-    transport_type = args.transport_type
     noise_rates = np.arange(noise_st, noise_ed+noise_d, noise_d)
 
     matching_acc_res = np.zeros((len(noise_rates), 10))
@@ -79,7 +75,7 @@ if __name__ == "__main__":
     cur_ind = 0
     for noise in noise_rates:
         noise = round(noise, 2)
-        argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, transport_type)
+        argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
         print(argparse)
         '''
         alpha: maximum transported mass where partial OT cost less than 1-eps
@@ -95,7 +91,7 @@ if __name__ == "__main__":
 
         data_name_ = 'OTP_lp_metric_{}'.format(argparse)
         try:
-            data_a, data_b, data_label, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric = load_data(n, data_name_)
+            data_a, data_b, data_label, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric = load_computed_matrix(n, data_name_)
         except:
             print("data {} not found, run gen_OTP_metric_matrix.py first".format(data_name_))
             exit(0)
@@ -153,5 +149,5 @@ if __name__ == "__main__":
             print('beta_normalized_maxdual: acc = {}, std = {}'.format(beta_normalized_maxdual_acc, beta_normalized_maxdual_std))
             print('realtotalCost: acc = {}, std = {}'.format(realtotalCost_acc, realtotalCost_std))
 
-    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, transport_type)
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
     np.savetxt("./results/matching_acc_res_{}.csv".format(argparse), matching_acc_res, delimiter=",")

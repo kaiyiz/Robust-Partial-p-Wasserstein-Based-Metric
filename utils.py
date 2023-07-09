@@ -1,8 +1,10 @@
 import numpy as np
+import os
 from scipy.stats import norm, multivariate_normal
 from scipy.spatial.distance import cdist
+import tensorflow as tf
 
-def load_data(n, dataset_name):
+def load_computed_matrix(n, dataset_name):
     npzfiles = np.load('./results/{}.npz'.format(dataset_name))
     all_res = npzfiles['all_res']
     data_label = npzfiles['mnist_pick_label']
@@ -20,7 +22,7 @@ def load_data(n, dataset_name):
     L1_metric = all_res[:,:,9]
     return  data_a, data_b, data_label, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric
 
-def add_niose(data, noise_type = "uniform", noise_level=0.1):
+def add_noise(data, noise_type = "uniform", noise_level=0.1):
     m = data.shape[0]
     n = data.shape[1]
     if noise_type == "uniform":
@@ -49,28 +51,18 @@ def add_niose(data, noise_type = "uniform", noise_level=0.1):
     data = (1 - noise_level) * data + noise_level * noise
     return data
 
-def add_geometric_noise(data, noise_level=0.1):
-    # each row is a flattened image, I want to add a 2d normal noise to each image at a random locations
-    # noise_level is the percentage of noise added to the image
-    # mnist is 28x28 images
-    # create a 28x28 grid, each cell is a pixel
-    # for each image, add a 2d normal noise to a random location
+def add_noise_3d_matching(data, noise_type = "uniform", noise_level=0.1):
+    # add noise to 3d data
     m = data.shape[0]
-    n = data.shape[1]
-    nn = int(np.sqrt(n))
-    mu_loc = [(nn/8, nn/8), (nn/8, 3*nn/8), (nn/8, 5*nn/8), (nn/8, 7*nn/8), (3*nn/8, nn/8), (3*nn/8, 7*nn/8), (5*nn/8, nn/8), (5*nn/8, 7*nn/8), (7*nn/8, nn/8), (7*nn/8, 3*nn/8), (7*nn/8, 5*nn/8), (7*nn/8, 7*nn/8)]
-    noise = np.zeros((m, n))
-    for i in range(m):
-        mu = np.random.choice(len(mu_loc))
-        mu = mu_loc[mu]
-        x = np.arange(nn)
-        y = np.arange(nn)
-        X, Y = np.meshgrid(x, y)
-        pos = np.dstack((X, Y))
-        rv = multivariate_normal(mu, [[n*0.05, 0], [0, n*0.05]])
-        noise[i,:] = rv.pdf(pos).reshape(-1)
-    noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)
-    data = (1-noise_level)*data + noise_level * noise
+    n = data.shape[1] # number of pixels/voxels
+    nn = data.shape[2]
+    # pick a number of pixels/voxels to add noise based on noise_level
+    noise_ind = np.random.choice(n, int(n*noise_level), replace=False)
+    if noise_type == "uniform":
+        noise = np.random.rand(m, len(noise_ind), nn)
+    else:
+        raise ValueError("noise type not found")
+    data[:,noise_ind,:] = noise
     return data
 
 def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
@@ -100,16 +92,23 @@ def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
 
     return mnist_pick, mnist_pick_label
 
-def get_ground_dist(a, b, transport_type="geo"):
+def get_ground_dist(a, b, transport_type="geo_transport", metric='euclidean'):
     m = a.shape[0]
-    if transport_type == "geo":
-        dist = computeDistMatrixGrid2d(int(np.sqrt(m)))
-        dist = dist / np.max(dist) 
-    elif transport_type == "hist":
-        dist = cdist(a, b, metric='minkowski', p=1)
-        dist = dist
+    if len(a.shape) == 1:
+        d = 1
     else:
-        raise ValueError("dist_type not found")
+        d = a.shape[1]
+    if transport_type == "geo_transport":
+        dist = computeDistMatrixGrid2d(int(np.sqrt(m)), metric)
+        dist = dist / np.max(dist) 
+    elif transport_type == "matching":
+        dist = cdist(a, b, metric)
+        one = np.ones((1, d))
+        zero = np.zeros((1, d))
+        dist_max = cdist(one, zero, metric)
+        dist = dist / dist_max[0][0]
+    else:
+        raise ValueError("transport type not found")
     return dist
 
 def computeDistMatrixGrid2d(n,metric='euclidean'):
@@ -122,3 +121,104 @@ def computeDistMatrixGrid2d(n,metric='euclidean'):
             iter += 1
     dist = cdist(A, A, metric)
     return dist
+
+def load_data(data_name):
+    if data_name == 'mnist':
+        if os.path.exists('./data/mnist.npy'):
+            data = np.load('./data/mnist.npy') # 60k x 28 x 28
+            data_labels = np.load('./data/mnist_labels.npy').ravel().astype(int) # 60k x 1 # originally UINT8
+        else:
+            (data, data_labels), (_, _) = tf.keras.datasets.mnist.load_data()
+            np.save('mnist.npy', data)
+            np.save('mnist_labels.npy', data_labels)
+    elif data_name == 'cifar10':
+        if os.path.exists('./data/cifar10.npy'):
+            data = np.load('./data/cifar10.npy')
+            data_labels = np.load('./data/cifar10_labels.npy').ravel().astype(int)
+        else:
+            (data, data_labels), (_, _) = tf.keras.datasets.cifar10.load_data()
+            np.save('./data/cifar10.npy', data)
+            np.save('./data/cifar10_labels.npy', data_labels)
+    else:
+        raise ValueError("data_name not found")
+
+    return data, data_labels
+
+def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
+    # eps = Contamination proportion
+    # n = number of samples
+    ############ Creating pure and contaminated mnist dataset ############
+
+    np.random.seed(seed)
+    p = np.random.permutation(len(mnist_labels))
+    mnist = mnist[p,:,:]
+    mnist_labels = mnist_labels[p]
+    # all_index = np.arange(len(mnist_labels))
+    # index_perm = np.random.permutation(all_index)
+
+    ind_all = np.array([])
+    for i in range(10):
+        ind = np.nonzero(mnist_labels == i)[0][:int(n/10)]
+        ind_all = np.append(ind_all, ind)
+
+    ind_all = ind_all.astype(int)
+    mnist_pick, mnist_pick_label = mnist[ind_all, :, :], mnist_labels[ind_all]
+    mnist_pick = mnist_pick/255.0
+    mnist_pick = mnist_pick.reshape(-1, 784)
+    mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
+    mnist_pick[np.nonzero(mnist_pick==0)] = 0.000001
+    mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
+
+    return mnist_pick, mnist_pick_label
+
+def rand_pick_cifar10(data, data_labels, n=200, seed = 0):
+    np.random.seed(seed)
+    p = np.random.permutation(len(data_labels))
+    data = data[p,:]
+    data_labels = data_labels[p]
+    n_unique_labels = len(np.unique(data_labels))
+    nn = data.shape[1]
+    mm = data.shape[2]
+
+    ind_all = np.array([])
+    for i in range(n_unique_labels):
+        ind = np.nonzero(data_labels == i)[0][:int(n/10)]
+        ind_all = np.append(ind_all, ind)
+
+    ind_all = ind_all.astype(int)
+    data_pick, data_pick_label = data[ind_all, :], data_labels[ind_all]
+    data_pick = data_pick/255.0
+    data_pick = data_pick.reshape(-1, nn*mm, 3)
+
+    return data_pick, data_pick_label
+
+def e_dist(A, B):
+    A_n = (A**2).sum(axis=1).reshape(-1,1)
+    B_n = (B**2).sum(axis=1).reshape(1,-1)
+    inner = np.matmul(A, B.T)
+    return A_n - 2*inner + B_n
+
+def rand_pick_mnist_09(mnist, mnist_labels, seed=1):
+    np.random.seed(seed)
+    all_index = np.arange(len(mnist_labels))
+    rand_index = np.random.permutation(all_index)
+    mnist, mnist_labels = mnist[rand_index, :, :], mnist_labels[rand_index]
+
+    mnist_pick_ind = []
+    for i in range(10):
+        cur_index = 0
+        while True:
+            if mnist_labels[cur_index] == i:
+                mnist_pick_ind.append(cur_index)
+                break
+            else:
+                cur_index += 1
+
+    mnist_pick, mnist_pick_label = mnist[mnist_pick_ind, :, :], mnist_labels[mnist_pick_ind]
+    mnist_pick = mnist_pick/255.0
+    mnist_pick = mnist_pick.reshape(-1, 784)
+    mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
+    mnist_pick[np.nonzero(mnist_pick==0)] = 0.000001
+    mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
+    
+    return mnist_pick, mnist_pick_label

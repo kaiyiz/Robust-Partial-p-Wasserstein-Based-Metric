@@ -8,7 +8,7 @@ import argparse
 import matplotlib.pyplot as plts
 import pandas as pd
 from scipy.spatial.distance import cdist
-from utils import load_data
+from utils import load_data, load_computed_matrix
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -60,8 +60,6 @@ if __name__ == "__main__":
     parser.add_argument('--top_k', type=int, default=10)
     parser.add_argument('--verbose', type=bool, default=False)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
-    parser.add_argument('--noise_type', type=str, default="uniform")
-    parser.add_argument('--transport_type', type=str, default="geo")
     args = parser.parse_args()
     print(args)
 
@@ -74,15 +72,13 @@ if __name__ == "__main__":
     top_k = args.top_k
     verbose = args.verbose
     metric_scaler = args.metric_scaler
-    noise_type = args.noise_type
-    transport_type = args.transport_type
     noise_rates = np.arange(noise_st, noise_ed+noise_d, noise_d)
 
     img_retrival_res = np.zeros((len(noise_rates), 10))
     cur_ind = 0
     for noise in noise_rates:
         noise = round(noise, 2)
-        argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, transport_type)
+        argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
         print(argparse)
         '''
         alpha: maximum transported mass where partial OT cost less than 1-eps
@@ -98,7 +94,7 @@ if __name__ == "__main__":
 
         data_name_ = 'OTP_lp_metric_{}'.format(argparse)
         try:
-            data_a, data_b, data_label, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric = load_data(n, data_name_)
+            data_a, data_b, data_label, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric = load_computed_matrix(n, data_name_)
         except:
             print("data {} not found, run gen_OTP_metric_matrix.py first".format(data_name_))
             exit(0)
@@ -145,5 +141,5 @@ if __name__ == "__main__":
 
         cur_ind += 1
     
-    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, transport_type)
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
     np.savetxt("./results/img_retrival_res_{}.csv".format(argparse), img_retrival_res, delimiter=",")

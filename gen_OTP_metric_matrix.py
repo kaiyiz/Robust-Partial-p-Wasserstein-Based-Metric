@@ -24,71 +24,13 @@ jpype.startJVM("-Xmx10000m", classpath=['./optimaltransport.jar'])
 from optimaltransport import Mapping
 
 from kneed import KneeLocator
-from utils import add_niose, get_ground_dist
+from utils import load_data, add_noise, get_ground_dist, rand_pick_mnist, rand_pick_cifar10, add_noise_3d_matching
 
 
 """
 Relevant parts of the code have been adapted from :
 https://github.com/debarghya-mukherjee/Robust-Optimal-Transport/blob/main/ROBOT_mnist_outlier_detection.py
 """
-
-def e_dist(A, B):
-    A_n = (A**2).sum(axis=1).reshape(-1,1)
-    B_n = (B**2).sum(axis=1).reshape(1,-1)
-    inner = np.matmul(A, B.T)
-    return A_n - 2*inner + B_n
-
-def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
-    # eps = Contamination proportion
-    # n = number of samples
-    ############ Creating pure and contaminated mnist dataset ############
-
-    np.random.seed(seed)
-    p = np.random.permutation(len(mnist_labels))
-    mnist = mnist[p,:,:]
-    mnist_labels = mnist_labels[p]
-    # all_index = np.arange(len(mnist_labels))
-    # index_perm = np.random.permutation(all_index)
-
-    ind_all = np.array([])
-    for i in range(10):
-        ind = np.nonzero(mnist_labels == i)[0][:int(n/10)]
-        ind_all = np.append(ind_all, ind)
-
-    ind_all = ind_all.astype(int)
-    mnist_pick, mnist_pick_label = mnist[ind_all, :, :], mnist_labels[ind_all]
-    mnist_pick = mnist_pick/255.0
-    mnist_pick = mnist_pick.reshape(-1, 784)
-    mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
-    mnist_pick[np.nonzero(mnist_pick==0)] = 0.000001
-    mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
-
-    return mnist_pick, mnist_pick_label
-
-def rand_pick_mnist_09(mnist, mnist_labels, seed=1):
-    np.random.seed(seed)
-    all_index = np.arange(len(mnist_labels))
-    rand_index = np.random.permutation(all_index)
-    mnist, mnist_labels = mnist[rand_index, :, :], mnist_labels[rand_index]
-
-    mnist_pick_ind = []
-    for i in range(10):
-        cur_index = 0
-        while True:
-            if mnist_labels[cur_index] == i:
-                mnist_pick_ind.append(cur_index)
-                break
-            else:
-                cur_index += 1
-
-    mnist_pick, mnist_pick_label = mnist[mnist_pick_ind, :, :], mnist_labels[mnist_pick_ind]
-    mnist_pick = mnist_pick/255.0
-    mnist_pick = mnist_pick.reshape(-1, 784)
-    mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
-    mnist_pick[np.nonzero(mnist_pick==0)] = 0.000001
-    mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
-    
-    return mnist_pick, mnist_pick_label
 
 def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=None, i=0, j=0, time_start=NONE):
     # delta : acceptable additive error
@@ -160,13 +102,11 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=No
 if __name__ == "__main__":
     # LOAD Data
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n', type=int, default=200)
+    parser.add_argument('--n', type=int, default=20)
     parser.add_argument('--delta', type=float, default=0.01)
     parser.add_argument('--data_name', type=str, default='mnist')
     parser.add_argument('--noise', type=float, default=0.1)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
-    parser.add_argument('--noise_type', type=str, default="uniform")
-    parser.add_argument('--transport_type', type=str, default="geo")
 
     args = parser.parse_args()
     print(args)
@@ -176,45 +116,34 @@ if __name__ == "__main__":
     data_name = args.data_name
     noise = args.noise
     metric_scaler = args.metric_scaler
-    noise_type = args.noise_type
-    transport_type = args.transport_type
-    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_noise_{}_grddist_{}".format(n, delta, data_name, noise, metric_scaler, noise_type, transport_type)
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
 
-    if os.path.exists('./data/mnist.npy'):
-        mnist = np.load('./data/mnist.npy') # 60k x 28 x 28
-        mnist_labels = np.load('./data/mnist_labels.npy').ravel().astype(int) # 60k x 1 # originally UINT8
-    else:
-        (mnist, mnist_labels), (_, _) = tf.keras.datasets.mnist.load_data()
-        np.save('mnist.npy', mnist)
-        np.save('mnist_labels.npy', mnist_labels)
-
-    mnist_pick_a, mnist_pick_label = rand_pick_mnist(mnist, mnist_labels, n, 0)
-    mnist_pick_b, mnist_pick_label = rand_pick_mnist(mnist, mnist_labels, n, 1)
-
-    mnist_pick_b_noise = add_niose(mnist_pick_b, noise_type = noise_type, noise_level=noise)
-    # mnist_pick_b_noise = add_geometric_noise(mnist_pick_b, noise_level=noise)
-    # mnist_pick, mnist_pick_label = rand_pick_mnist_09(mnist, mnist_labels, 1)
-
+    data, data_labels = load_data(data_name)
     all_res = np.zeros((n,n,10))
 
-    if transport_type == "geo":
-        dist = get_ground_dist(mnist_pick_a[0,:], mnist_pick_b_noise[1,:], transport_type)
+    if data_name == "mnist":
+        data_pick_a, data_pick_label = rand_pick_mnist(data, data_labels, n, 0)
+        data_pick_b, data_pick_label = rand_pick_mnist(data, data_labels, n, 1)
+        data_pick_b_noise = add_noise(data_pick_b, noise_type = 'geo_normal', noise_level=noise)
+        dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'geo_transport')
         start_time = time.time()
-        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(mnist_pick_a[i,:], mnist_pick_b_noise[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(data_pick_a[i,:], data_pick_b_noise[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
-    elif transport_type == "hist":
+    elif data_name == "cifar10":
         start_time = time.time()
-        m = mnist_pick_a.shape[1]
+        data_pick_a, data_pick_label = rand_pick_cifar10(data, data_labels, n, 0)
+        data_pick_b, data_pick_label = rand_pick_cifar10(data, data_labels, n, 1)
+        data_pick_b_noise = add_noise_3d_matching(data_pick_b, noise_type = 'uniform', noise_level=noise)
+        m = data_pick_a.shape[1]
         a = np.ones(m)/m
         b = np.ones(m)/m
-        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, get_ground_dist(mnist_pick_a[i,:].reshape(-1,1), mnist_pick_b_noise[j,:].reshape(-1,1), transport_type="hist"), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, get_ground_dist(data_pick_a[i,:], data_pick_b_noise[j,:], transport_type="matching"), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
     else:
-        raise ValueError("transport_type not found")
+        raise ValueError("data not found")
 
-
-    L1_metric = cdist(mnist_pick_a.reshape(int(n),-1), mnist_pick_b_noise.reshape(int(n),-1), metric='minkowski', p=1)
+    L1_metric = cdist(data_pick_a.reshape(int(n),-1), data_pick_b_noise.reshape(int(n),-1), metric='minkowski', p=1)
     all_res[:,:,9] = L1_metric
 
     print("finish all job in {}s".format(end_time-start_time))
-    np.savez('./results/OTP_lp_metric_{}'.format(argparse), all_res=all_res, data_a=mnist_pick_a, data_b=mnist_pick_b_noise, mnist_pick_label=mnist_pick_label)
+    np.savez('./results/OTP_lp_metric_{}'.format(argparse), all_res=all_res, data_a=data_pick_a, data_b=data_pick_b_noise, mnist_pick_label=data_pick_label)

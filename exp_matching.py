@@ -1,5 +1,5 @@
 '''
-This experiment compare the preformance of different metric in image matching.
+This experiment compare the preformance of different metric on image matching.
 We used a precalculated metric matrix for mnist digits and corresponding labels, and 
 extract two sets of images from the dataset and do image matching using the metric.
 '''

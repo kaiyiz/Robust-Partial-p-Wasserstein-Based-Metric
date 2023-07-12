@@ -43,7 +43,7 @@ def add_noise(data, noise_type = "uniform", noise_level=0.1):
             y = np.arange(nn)
             X, Y = np.meshgrid(x, y)
             pos = np.dstack((X, Y))
-            rv = multivariate_normal(mu, [[n*0.05, 0], [0, n*0.05]])
+            rv = multivariate_normal(mu, [[nn*0.1, 0], [0, nn*0.1]])
             noise[i,:] = rv.pdf(pos).reshape(-1)
         noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)
     else:
@@ -60,6 +60,18 @@ def add_noise_3d_matching(data, noise_type = "uniform", noise_level=0.1):
     noise_ind = np.random.choice(n, int(n*noise_level), replace=False)
     if noise_type == "uniform":
         noise = np.random.rand(m, len(noise_ind), nn)
+    elif noise_type == "normal3d":
+        mu_positions = np.array([(x, y, z) for x in [1/4, 1/2, 3/4] for y in [1/4, 1/2, 3/4] for z in [1/4, 1/2, 3/4]])
+        noise = np.zeros((m, len(noise_ind), nn))
+        for i in range(m):
+            # Randomly select one of these positions as the mean
+            np.random.seed(i) 
+            mu = mu_positions[np.random.choice(mu_positions.shape[0])]
+            # Define the covariance matrix
+            cov = np.array([[0.05, 0, 0], [0, 0.05, 0], [0, 0, 0.05]])
+            # Generate data
+            pts = np.random.multivariate_normal(mu, cov, len(noise_ind))
+            noise[i,:,:] = pts
     else:
         raise ValueError("noise type not found")
     data[:,noise_ind,:] = noise

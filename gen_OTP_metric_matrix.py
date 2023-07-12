@@ -20,7 +20,7 @@ import jpype
 import jpype.imports
 from jpype.types import *
 print(jpype.getDefaultJVMPath())
-jpype.startJVM("-Xmx10000m", classpath=['./optimaltransport.jar'])
+jpype.startJVM("-Xmx128g", classpath=['./optimaltransport.jar'])
 from optimaltransport import Mapping
 
 from kneed import KneeLocator
@@ -102,7 +102,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=No
 if __name__ == "__main__":
     # LOAD Data
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n', type=int, default=20)
+    parser.add_argument('--n', type=int, default=200)
     parser.add_argument('--delta', type=float, default=0.01)
     parser.add_argument('--data_name', type=str, default='mnist')
     parser.add_argument('--noise', type=float, default=0.1)

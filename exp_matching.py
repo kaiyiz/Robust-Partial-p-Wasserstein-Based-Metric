@@ -57,6 +57,7 @@ if __name__ == "__main__":
     parser.add_argument('--noise_d', type=float, default=0.1)
     parser.add_argument('--verbose', type=bool, default=False)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
+    parser.add_argument('--shift_pixel', type=int, default=0)
     args = parser.parse_args()
     print(args)
 
@@ -68,6 +69,7 @@ if __name__ == "__main__":
     noise_d = args.noise_d
     verbose = args.verbose
     metric_scaler = args.metric_scaler
+    shift_pixel = args.shift_pixel
     noise_rates = np.arange(noise_st, noise_ed+noise_d, noise_d)
 
     matching_acc_res = np.zeros((len(noise_rates), 10))
@@ -75,7 +77,7 @@ if __name__ == "__main__":
     cur_ind = 0
     for noise in noise_rates:
         noise = round(noise, 2)
-        argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
+        argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_sp_{}".format(n, delta, data_name, noise, metric_scaler, shift_pixel)
         print(argparse)
         '''
         alpha: maximum transported mass where partial OT cost less than 1-eps
@@ -149,5 +151,4 @@ if __name__ == "__main__":
             print('beta_normalized_maxdual: acc = {}, std = {}'.format(beta_normalized_maxdual_acc, beta_normalized_maxdual_std))
             print('realtotalCost: acc = {}, std = {}'.format(realtotalCost_acc, realtotalCost_std))
 
-    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}".format(n, delta, data_name, noise, metric_scaler)
     np.savetxt("./results/matching_acc_res_{}.csv".format(argparse), matching_acc_res, delimiter=",")

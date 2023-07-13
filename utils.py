@@ -77,6 +77,18 @@ def add_noise_3d_matching(data, noise_type = "uniform", noise_level=0.1):
     data[:,noise_ind,:] = noise
     return data
 
+def shift_image(data, shift=1):
+    # shift image by shift pixels
+    m = data.shape[0]
+    n = data.shape[1]
+    nn = int(np.sqrt(n))
+    data = data.reshape(m, nn, nn)
+    data_shift = np.zeros((m, nn, nn))
+    for i in range(m):
+        data_shift[i,:,:] = np.roll(data[i,:,:], shift, axis=0)
+    data_shift = data_shift.reshape(m, n)
+    return data_shift
+
 def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
     # eps = Contamination proportion
     # n = number of samples

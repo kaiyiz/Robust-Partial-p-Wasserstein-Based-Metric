@@ -33,9 +33,9 @@ def retrive_images(data_label, cur_metric, metric_name, top_k=10, verbose=False)
         print("{}_top_{} precision={}".format(metric_name, top_k, precision))
     return top_k_images, precision
 
-def save_images(data_name, data_a, data_b, data_label, top_k_images, metric_name):
+def save_images(data_name, data_a, data_b, data_label, top_k_images, metric_name, argparse):
     # save the top_k images for each image in the dataset
-    save_path = "./results/retrival_{}_{}".format(metric_name, data_name)
+    save_path = "./results/retrival_{}".format(argparse)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     n = data_label.shape[0]
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     parser.add_argument('--delta', type=float, default=0.01)
     parser.add_argument('--data_name', type=str, default='mnist')
     parser.add_argument('--noise_st', type=float, default=0.0)
-    parser.add_argument('--noise_ed', type=float, default=0.0)
+    parser.add_argument('--noise_ed', type=float, default=1.0)
     parser.add_argument('--noise_d', type=float, default=0.1)
     parser.add_argument('--top_k', type=int, default=10)
     parser.add_argument('--verbose', type=bool, default=False)
@@ -154,12 +154,12 @@ if __name__ == "__main__":
 
         top_k_images, L1_precision = retrive_images(data_label, L1_metric, 'L1_metric', top_k=top_k, verbose=verbose)
         img_retrival_res[cur_ind, 0] = L1_precision
-        save_images(data_name, data_a, data_b, data_label, top_k_images, 'L1_metric')
+        save_images(data_name, data_a, data_b, data_label, top_k_images, 'L1_metric', argparse)
         # print_retrival_comp(top_k_images, data_label)
 
         top_k_images, alpha_precision = retrive_images(data_label, alpha, 'distance_alpha', top_k=top_k, verbose=verbose)
         img_retrival_res[cur_ind, 1] = alpha_precision
-        save_images(data_name, data_a, data_b, data_label, top_k_images, 'distance_alpha')
+        save_images(data_name, data_a, data_b, data_label, top_k_images, 'distance_alpha', argparse)
         # print_retrival_comp(top_k_images, data_label)
 
         top_k_images, alpha_OT_precision = retrive_images(data_label, alpha_OT, 'OT_at_alpha', top_k=top_k, verbose=verbose)
@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
         top_k_images, realtotalCost_precision = retrive_images(data_label, realtotalCost, 'real_total_OT_cost', top_k=top_k, verbose=verbose)
         img_retrival_res[cur_ind, 9] = realtotalCost_precision
-        save_images(data_name, data_a, data_b, data_label, top_k_images, 'real_total_OT_cost')
+        save_images(data_name, data_a, data_b, data_label, top_k_images, 'real_total_OT_cost', argparse)
         # print_retrival_comp(top_k_images, data_label)
 
         cur_ind += 1

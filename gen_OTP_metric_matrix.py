@@ -58,7 +58,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=No
         normalized_cumcost = (cumCost)/(1.0 * totalCost)
 
     alphaa = 4.0*np.max(dist)/delta
-    maxdual = APinfo_cleaned[:,4]/alphaa
+    maxdual = APinfo_cleaned[:,4]/alphaa*metric_scaler
     final_dual = maxdual[-1]
     if final_dual == 0:
         normalized_maxdual = maxdual * 0.0
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     parser.add_argument('--n', type=int, default=200)
     parser.add_argument('--delta', type=float, default=0.01)
     parser.add_argument('--data_name', type=str, default='mnist')
-    parser.add_argument('--noise', type=float, default=0.1)
+    parser.add_argument('--noise', type=float, default=0.0)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--shift_pixel', type=int, default=0)
 

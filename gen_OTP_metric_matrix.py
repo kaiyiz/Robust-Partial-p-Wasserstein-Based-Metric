@@ -1,20 +1,9 @@
 import argparse
-from operator import index
-import string
-from tkinter import NONE
 import numpy as np
-import ot
-import os
-import sys
 import time
-# import tensorflow as tf
-import scipy
 
 from joblib import Parallel, delayed
 from scipy.spatial.distance import cdist
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import ImageGrid
-import matplotlib.pyplot as plt
 
 import jpype
 import jpype.imports
@@ -23,7 +12,6 @@ print(jpype.getDefaultJVMPath())
 jpype.startJVM("-Xmx128g", classpath=['./optimaltransport.jar'])
 from optimaltransport import Mapping
 
-from kneed import KneeLocator
 from utils import load_data, add_noise, get_ground_dist, rand_pick_mnist, rand_pick_cifar10, add_noise_3d_matching, shift_image
 
 
@@ -32,7 +20,7 @@ Relevant parts of the code have been adapted from :
 https://github.com/debarghya-mukherjee/Robust-Optimal-Transport/blob/main/ROBOT_mnist_outlier_detection.py
 """
 
-def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=None, i=0, j=0, time_start=NONE):
+def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=None, i=0, j=0, time_start=None):
     # delta : acceptable additive error
     # q_idx : index to get returned values
     nz = len(X)

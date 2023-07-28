@@ -125,12 +125,15 @@ def get_ground_dist(a, b, transport_type="geo_transport", metric='euclidean'):
     if transport_type == "geo_transport":
         dist = computeDistMatrixGrid2d(int(np.sqrt(m)), metric)
         dist = dist / np.max(dist) 
-    elif transport_type == "matching":
+    elif transport_type == "color_matching":
         dist = cdist(a, b, metric)
         one = np.ones((1, d))
         zero = np.zeros((1, d))
         dist_max = cdist(one, zero, metric)
         dist = dist / dist_max[0][0]
+    elif transport_type == "mnist_extract":
+        dist = cdist(a, b, metric, p=1)
+        dist = dist / (np.sqrt(2)*28)
     else:
         raise ValueError("transport type not found")
     return dist
@@ -194,6 +197,22 @@ def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
     mnist_pick = mnist_pick / mnist_pick.sum(axis=1, keepdims=1)
 
     return mnist_pick, mnist_pick_label
+
+def extract_mnist_mass(data_pick, ind, n=28):
+    threshold = 1/(n*n*n)
+    data_pick = data_pick[ind, :]
+    data_pick_mass = data_pick[np.where(data_pick>threshold)]
+    data_pick_mass = data_pick_mass/np.sum(data_pick_mass)
+
+    return data_pick_mass
+
+def extract_mnist_loc(data_pick, ind, n=28):
+    threshold = 1/(n*n*n)
+    data_pick = data_pick[ind, :]
+    data_pick_sq = data_pick.reshape(n, n)
+    data_pick_sq_mass_ind = np.argwhere(data_pick_sq>threshold)
+
+    return data_pick_sq_mass_ind
 
 def rand_pick_cifar10(data, data_labels, n=200, seed = 0):
     np.random.seed(seed)

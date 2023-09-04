@@ -58,22 +58,32 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=No
     flowProgress = (cumFlow)/(1.0 * totalFlow)
 
     d_cost = (1 - flowProgress) - cumCost
-    d_ind = np.nonzero(d_cost<=0)[0][0]-1
-    alpha = 1-flowProgress[d_ind]
-    alpha_OT = cumCost[d_ind]
+    d_ind_a = np.nonzero(d_cost<=0)[0][0]-1
+    d_ind_b = d_ind_a + 1
+    alpha = find_intersection_point(flowProgress[d_ind_a], d_cost[d_ind_a], flowProgress[d_ind_b], d_cost[d_ind_b])
+    alpha_OT = cumCost[d_ind_a] + (cumCost[d_ind_b]-cumCost[d_ind_a])*(alpha-flowProgress[d_ind_a])/(flowProgress[d_ind_b]-flowProgress[d_ind_a])
+    alpha = 1 - alpha
+
     d_cost = (1 - flowProgress) - normalized_cumcost
-    d_ind = np.nonzero(d_cost<=0)[0][0]-1
-    alpha_normalized = 1-flowProgress[d_ind]
-    alpha_normalized_OT = normalized_cumcost[d_ind]
+    d_ind_a = np.nonzero(d_cost<=0)[0][0]-1
+    d_ind_b = d_ind_a + 1
+    alpha_normalized = find_intersection_point(flowProgress[d_ind_a], d_cost[d_ind_a], flowProgress[d_ind_b], d_cost[d_ind_b])
+    alpha_normalized_OT = normalized_cumcost[d_ind_a] + (normalized_cumcost[d_ind_b]-normalized_cumcost[d_ind_a])*(alpha_normalized-flowProgress[d_ind_a])/(flowProgress[d_ind_b]-flowProgress[d_ind_a])
+    alpha_normalized = 1 - alpha_normalized
     
     d_dual = (1 - flowProgress) - maxdual
-    d_ind = np.nonzero(d_dual<=0)[0][0]-1
-    beta = 1-flowProgress[d_ind]
-    beta_maxdual = maxdual[d_ind]
+    d_ind_a = np.nonzero(d_dual<=0)[0][0]-1
+    d_ind_b = d_ind_a + 1
+    beta = find_intersection_point(flowProgress[d_ind_a], d_dual[d_ind_a], flowProgress[d_ind_b], d_dual[d_ind_b])
+    beta_maxdual = maxdual[d_ind_a] + (maxdual[d_ind_b]-maxdual[d_ind_a])*(beta-flowProgress[d_ind_a])/(flowProgress[d_ind_b]-flowProgress[d_ind_a])
+    beta = 1 - beta
+
     d_dual = (1 - flowProgress) - normalized_maxdual
-    d_ind = np.nonzero(d_dual<=0)[0][0]-1
-    beta_normalized = 1-flowProgress[d_ind]
-    beta_normalized_maxdual = normalized_maxdual[d_ind]
+    d_ind_a = np.nonzero(d_dual<=0)[0][0]-1
+    d_ind_b = d_ind_a + 1
+    beta_normalized = find_intersection_point(flowProgress[d_ind_a], d_dual[d_ind_a], flowProgress[d_ind_b], d_dual[d_ind_b])
+    beta_normalized_maxdual = normalized_maxdual[d_ind_a] + (normalized_maxdual[d_ind_b]-normalized_maxdual[d_ind_a])*(beta_normalized-flowProgress[d_ind_a])/(flowProgress[d_ind_b]-flowProgress[d_ind_a])
+    beta_normalized = 1 - beta_normalized
     
     realtotalCost = gtSolver.getTotalCost()
 
@@ -86,6 +96,17 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=No
         print("estimate to finish the job in {}s".format(total_time-time_spent))
 
     all_res[i,j,:9] = np.array([alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost])
+
+def find_intersection_point(x1, y1, x2, y2):
+    # x1 < x2
+    # y1 > 0
+    # y2 < 0
+    # y = ax + b
+    # find x when y = 0
+    a = (y2-y1)/(x2-x1)
+    b = y1 - a*x1
+    x = -b/a
+    return x
 
 if __name__ == "__main__":
     # LOAD Data

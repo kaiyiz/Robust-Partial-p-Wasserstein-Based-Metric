@@ -46,6 +46,21 @@ def add_noise(data, noise_type = "uniform", noise_level=0.1):
             rv = multivariate_normal(mu, [[nn*0.1, 0], [0, nn*0.1]])
             noise[i,:] = rv.pdf(pos).reshape(-1)
         noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)
+    elif noise_type == "corner":
+        # add noise to a random corner of the image
+        nn = int(np.sqrt(n))
+        noise = np.zeros((m, n))
+        for i in range(m):
+            mu = np.random.choice(4)
+            if mu == 0:
+                noise[i,0] = 1
+            elif mu == 1:
+                noise[i,nn-1] = 1
+            elif mu == 2:
+                noise[i,(nn-1)*nn] = 1
+            elif mu == 3:
+                noise[i,(nn-1)*nn + nn-1] = 1
+        noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)      
     else:
         raise ValueError("noise type not found")
     data = (1 - noise_level) * data + noise_level * noise

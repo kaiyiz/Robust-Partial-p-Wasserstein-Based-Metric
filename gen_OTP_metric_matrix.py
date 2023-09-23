@@ -117,6 +117,7 @@ if __name__ == "__main__":
     parser.add_argument('--noise', type=float, default=0.0)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--shift_pixel', type=int, default=0)
+    parser.add_argument('--noise_type', type=str, default='geo_normal')
 
     args = parser.parse_args()
     print(args)
@@ -127,7 +128,8 @@ if __name__ == "__main__":
     noise = args.noise
     metric_scaler = args.metric_scaler
     shift_pixel = args.shift_pixel
-    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_sp_{}".format(n, delta, data_name, noise, metric_scaler, shift_pixel)
+    noise_type = args.noise_type
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_sp_{}_nt_{}".format(n, delta, data_name, noise, metric_scaler, shift_pixel, noise_type)
 
     data, data_labels = load_data(data_name)
     all_res = np.zeros((n,n,10))
@@ -135,7 +137,7 @@ if __name__ == "__main__":
     if data_name == "mnist":
         data_pick_a, data_pick_label = rand_pick_mnist(data, data_labels, n, 0)
         data_pick_b, data_pick_label = rand_pick_mnist(data, data_labels, n, 1)
-        data_pick_b_noise = add_noise(data_pick_b, noise_type = 'geo_normal', noise_level=noise)
+        data_pick_b_noise = add_noise(data_pick_b, noise_type = noise_type, noise_level=noise)
         data_pick_b_noise = shift_image(data_pick_b_noise, shift_pixel)
         dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'geo_transport')
         start_time = time.time()
@@ -145,7 +147,7 @@ if __name__ == "__main__":
         start_time = time.time()
         data_pick_a, data_pick_label = rand_pick_cifar10(data, data_labels, n, 0)
         data_pick_b, data_pick_label = rand_pick_cifar10(data, data_labels, n, 1)
-        data_pick_b_noise = add_noise_3d_matching(data_pick_b, noise_type = 'uniform', noise_level=noise)
+        data_pick_b_noise = add_noise_3d_matching(data_pick_b, noise_type = noise_type, noise_level=noise)
         m = data_pick_a.shape[1]
         a = np.ones(m)/m
         b = np.ones(m)/m

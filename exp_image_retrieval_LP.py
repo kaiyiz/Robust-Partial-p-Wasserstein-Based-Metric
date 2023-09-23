@@ -105,42 +105,38 @@ def print_retrival_comp(top_k_images, data_label):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--n', type=int, default=200)
-    parser.add_argument('--delta', type=float, default=0.01)
     parser.add_argument('--data_name', type=str, default='mnist')
     parser.add_argument('--noise_st', type=float, default=0.0)
     parser.add_argument('--noise_ed', type=float, default=1.0)
     parser.add_argument('--noise_d', type=float, default=0.1)
     parser.add_argument('--shift_st', type=int, default=0)
-    parser.add_argument('--shift_ed', type=int, default=10)
+    parser.add_argument('--shift_ed', type=int, default=0)
     parser.add_argument('--top_k', type=int, default=10)
     parser.add_argument('--verbose', type=bool, default=False)
-    parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--noise_type', type=str, default='geo_normal')
     args = parser.parse_args()
     print(args)
 
     n = int(args.n)
-    delta = args.delta
     data_name = args.data_name
     noise_st = args.noise_st
     noise_ed = args.noise_ed
     noise_d = args.noise_d
     top_k = args.top_k
     verbose = args.verbose
-    metric_scaler = args.metric_scaler
     shift_pixel_st = args.shift_st
     shift_pixel_ed = args.shift_ed
     noise_type = args.noise_type
     noise_rates = np.arange(noise_st, noise_ed+noise_d, noise_d)
     shift_pixels = np.arange(shift_pixel_st, shift_pixel_ed+1, 1)
 
-    img_retrival_res = np.zeros((len(shift_pixels), len(noise_rates), 10))
+    img_retrival_res = np.zeros((len(shift_pixels), len(noise_rates)))
     noise_ind = 0
     for noise in noise_rates:
         shift_ind = 0
         for shift_pixel in shift_pixels:
             noise = round(noise, 2)
-            argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_sp_{}_nt_{}".format(n, delta, data_name, noise, metric_scaler, shift_pixel, noise_type)
+            argparse = "n_{}_data_{}_noise_{}_sp_{}_nt_{}".format(n, data_name, noise, shift_pixel, noise_type)
             print(argparse)
             '''
             alpha: maximum transported mass where partial OT cost less than 1-eps
@@ -154,57 +150,23 @@ if __name__ == "__main__":
             realtotalCost: real total OT cost
             '''
 
-            data_name_ = 'OTP_lp_metric_{}'.format(argparse)
+            data_name_ = 'LP_metric_{}'.format(argparse)
             try:
-                data_a, data_b, data_label, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric = load_computed_matrix(n, data_name_)
+                npzfiles = np.load('./results/{}.npz'.format(data_name_))
+                LP_metric = npzfiles['all_res']
+                data_label = npzfiles['mnist_pick_label']
+                data_a = npzfiles['data_a']
+                data_b = npzfiles['data_b']
             except:
                 print("data {} not found, run gen_OTP_metric_matrix.py first".format(data_name_))
                 exit(0)
 
-            top_k_images, L1_precision = retrive_images(data_label, L1_metric, 'L1_metric', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 0] = L1_precision
-            save_images(data_name, data_a, data_b, data_label, top_k_images, 'L1_metric', argparse)
-            # print_retrival_comp(top_k_images, data_label)
+            top_k_images, LP_precision = retrive_images(data_label, LP_metric, 'LP_metric', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind] = LP_precision
+            save_images(data_name, data_a, data_b, data_label, top_k_images, 'LP_metric', argparse)
 
-            top_k_images, alpha_precision = retrive_images(data_label, alpha, 'distance_alpha', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 1] = alpha_precision
-            save_images(data_name, data_a, data_b, data_label, top_k_images, 'distance_alpha', argparse)
-            # print_retrival_comp(top_k_images, data_label)
-
-            top_k_images, alpha_OT_precision = retrive_images(data_label, alpha_OT, 'OT_at_alpha', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 2] = alpha_OT_precision
-            # print_retrival_comp(top_k_images, data_label)
-
-            top_k_images, alpha_normalized_precision = retrive_images(data_label, alpha_normalized, 'distance_alpha_normalized', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 3] = alpha_normalized_precision
-            # print_retrival_comp(top_k_images, data_label)
-
-            top_k_images, alpha_normalized_OT_precision = retrive_images(data_label, alpha_normalized_OT, 'OT_at_alpha_normalized', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 4] = alpha_normalized_OT_precision
-            # print_retrival_comp(top_k_images, data_label)
-
-            top_k_images, beta_precision = retrive_images(data_label, beta, 'distance_beta', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 5] = beta_precision
-            # print_retrival_comp(top_k_images, data_label)
-
-            top_k_images, beta_maxdual_precision = retrive_images(data_label, beta_maxdual, 'maxdual_at_beta', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 6] = beta_maxdual_precision
-            # print_retrival_comp(top_k_images, data_label)
-
-            top_k_images, beta_normalized_precision = retrive_images(data_label, beta_normalized, 'distance_beta_normalized', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 7] = beta_normalized_precision
-            # print_retrival_comp(top_k_images, data_label)
-
-            top_k_images, beta_normalized_maxdual_precision = retrive_images(data_label, beta_normalized_maxdual, 'maxdual_at_beta_normalized', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 8] = beta_normalized_maxdual_precision
-            # print_retrival_comp(top_k_images, data_label)
-
-            top_k_images, realtotalCost_precision = retrive_images(data_label, realtotalCost, 'real_total_OT_cost', top_k=top_k, verbose=verbose)
-            img_retrival_res[shift_ind, noise_ind, 9] = realtotalCost_precision
-            save_images(data_name, data_a, data_b, data_label, top_k_images, 'real_total_OT_cost', argparse)
-            # print_retrival_comp(top_k_images, data_label)
             shift_ind += 1
         noise_ind += 1
 
     img_retrival_res = np.squeeze(img_retrival_res)
-    np.savetxt("./results/img_retrival_res_{}.csv".format(argparse), img_retrival_res, delimiter=",")
+    np.savetxt("./results/img_retrival_res_{}_LP.csv".format(argparse), img_retrival_res, delimiter=",")

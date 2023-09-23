@@ -173,15 +173,17 @@ if __name__ == "__main__":
             except:
                 print("data {} not found, run gen_OTP_metric_matrix.py first".format(data_name_))
                 exit(0)
-
+            
+            d_beta_LP = beta - LP_metric
+            lp_bound = (LP_metric * LP_metric)/(1-LP_metric)
             # compare alpha with LP_metric, print if any alpha is larger than LP_metric
-            d = LP_metric-alpha
+            d = alpha-lp_bound
             if (d<0).any():
-                print("alpha is larger than LP_metric")
+                print("alpha is less than LP_bound")
                 print(np.where(d<0))
                 print(d[np.where(d<0)])
             else:
-                print("all alpha is smaller than Levy-Prokhorov distance when {}".format(argparse))
+                print("all alpha is greater than LP_bound distance when {}".format(argparse))
             shift_ind += 1
         noise_ind += 1
 

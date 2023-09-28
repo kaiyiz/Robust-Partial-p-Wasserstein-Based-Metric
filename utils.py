@@ -75,6 +75,8 @@ def add_noise_3d_matching(data, noise_type = "uniform", noise_level=0.1):
     noise_ind = np.random.choice(n, int(n*noise_level), replace=False)
     if noise_type == "uniform":
         noise = np.random.rand(m, len(noise_ind), nn)
+    if noise_type == "blackout":
+        noise = np.zeros((m, len(noise_ind), nn))
     elif noise_type == "normal3d":
         mu_positions = np.array([(x, y, z) for x in [1/4, 1/2, 3/4] for y in [1/4, 1/2, 3/4] for z in [1/4, 1/2, 3/4]])
         noise = np.zeros((m, len(noise_ind), nn))
@@ -131,24 +133,23 @@ def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
 
     return mnist_pick, mnist_pick_label
 
-def get_ground_dist(a, b, transport_type="geo_transport", metric='euclidean'):
+def get_ground_dist(a, b, transport_type="fixed_bins_2d", metric='euclidean', diam=1):
     m = a.shape[0]
     if len(a.shape) == 1:
         d = 1
     else:
         d = a.shape[1]
-    if transport_type == "geo_transport":
+    if transport_type == "fixed_bins_2d":
         dist = computeDistMatrixGrid2d(int(np.sqrt(m)), metric)
-        dist = dist / np.max(dist) 
-    elif transport_type == "color_matching":
+        diam = np.max(dist) 
+        dist = dist / diam
+    elif transport_type == "high_dim":
         dist = cdist(a, b, metric)
-        one = np.ones((1, d))
-        zero = np.zeros((1, d))
-        dist_max = cdist(one, zero, metric)
-        dist = dist / dist_max[0][0]
+        dist = dist / diam
     elif transport_type == "mnist_extract":
         dist = cdist(a, b, metric, p=1)
-        dist = dist / (np.sqrt(2)*28)
+        diam = np.sqrt(2)*28
+        dist = dist / diam
     else:
         raise ValueError("transport type not found")
     return dist

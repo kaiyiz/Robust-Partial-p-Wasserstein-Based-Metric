@@ -113,11 +113,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--n', type=int, default=200)
     parser.add_argument('--delta', type=float, default=0.01)
-    parser.add_argument('--data_name', type=str, default='mnist')
+    parser.add_argument('--data_name', type=str, default='cifar10')
     parser.add_argument('--noise', type=float, default=0.0)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--shift_pixel', type=int, default=0)
-    parser.add_argument('--noise_type', type=str, default='geo_normal')
+    parser.add_argument('--noise_type', type=str, default='blackout')
 
     args = parser.parse_args()
     print(args)
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         data_pick_b, data_pick_label = rand_pick_mnist(data, data_labels, n, 1)
         data_pick_b_noise = add_noise(data_pick_b, noise_type = noise_type, noise_level=noise)
         data_pick_b_noise = shift_image(data_pick_b_noise, shift_pixel)
-        dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'geo_transport')
+        dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'fixed_bins_2d')
         start_time = time.time()
         Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(data_pick_a[i,:], data_pick_b_noise[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
@@ -148,10 +148,13 @@ if __name__ == "__main__":
         data_pick_a, data_pick_label = rand_pick_cifar10(data, data_labels, n, 0)
         data_pick_b, data_pick_label = rand_pick_cifar10(data, data_labels, n, 1)
         data_pick_b_noise = add_noise_3d_matching(data_pick_b, noise_type = noise_type, noise_level=noise)
+        geo_dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'fixed_bins_2d')
         m = data_pick_a.shape[1]
         a = np.ones(m)/m
         b = np.ones(m)/m
-        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, get_ground_dist(data_pick_a[i,:], data_pick_b_noise[j,:], transport_type="matching"), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+        diam_color = 3
+        lamda = 0.5
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, (1-lamda)*get_ground_dist(data_pick_a[i,:], data_pick_b_noise[j,:], transport_type="high_dim", metric='sqeuclidean', diam=diam_color) + lamda*geo_dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
     else:
         raise ValueError("data not found")

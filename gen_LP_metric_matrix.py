@@ -82,10 +82,13 @@ if __name__ == "__main__":
         data_pick_a, data_pick_label = rand_pick_cifar10(data, data_labels, n, 0)
         data_pick_b, data_pick_label = rand_pick_cifar10(data, data_labels, n, 1)
         data_pick_b_noise = add_noise_3d_matching(data_pick_b, noise_type = noise_type, noise_level=noise)
+        geo_dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'fixed_bins_2d')
         m = data_pick_a.shape[1]
         a = np.ones(m)/m
         b = np.ones(m)/m
-        Parallel(n_jobs=-1, prefer="threads")(delayed(levy_prokhorov_metric)(a, b, get_ground_dist(data_pick_a[i,:], data_pick_b_noise[j,:], transport_type="matching"), all_res, i, j, start_time) for i in range(n) for j in range(n))
+        diam_color = 3
+        lamda = 0.5
+        Parallel(n_jobs=-1, prefer="threads")(delayed(levy_prokhorov_metric)(a, b, (1-lamda)*get_ground_dist(data_pick_a[i,:], data_pick_b_noise[j,:], transport_type="high_dim", metric='sqeuclidean', diam=diam_color) + lamda*geo_dist, all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
     else:
         raise ValueError("data not found")

@@ -63,9 +63,9 @@ def save_images(data_name, data_a, data_b, data_label, top_k_images, metric_name
             nn = 28
             # final_image = final_image.reshape(20*nn, (top_k+1)*nn)
             final_image = final_image.reshape(-1,nn,nn) # data shape 220*32*32*3
-            final_image = final_image.reshape(20,11,nn,nn)
+            final_image = final_image.reshape(20,top_k+1,nn,nn)
             final_image = final_image.transpose(0,2,1,3)
-            final_image = final_image.reshape(20*nn,11*nn)
+            final_image = final_image.reshape(20*nn,top_k+1*nn)
             cur_image_a = cur_data_a.reshape(20,nn,nn)
             cur_image_a = cur_image_a.transpose(0,2,1)
             cur_image_a = cur_image_a.reshape(20*nn,nn)
@@ -74,9 +74,9 @@ def save_images(data_name, data_a, data_b, data_label, top_k_images, metric_name
         elif data_name == "cifar10":
             nn = 32
             final_image = final_image.reshape(-1,nn,nn,3) # data shape 220*32*32*3
-            final_image = final_image.reshape(20,11,nn,nn,3)
+            final_image = final_image.reshape(20,top_k+1,nn,nn,3)
             final_image = final_image.transpose(0,2,1,3,4)
-            final_image = final_image.reshape(20*nn,11*nn,3)
+            final_image = final_image.reshape(20*nn,(top_k+1)*nn,3)
             cur_image_a = cur_data_a.reshape(20,nn,nn,3)
             cur_image_a = cur_image_a.transpose(0,2,1,3)
             cur_image_a = cur_image_a.reshape(20*nn,nn,3)
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     parser.add_argument('--top_k', type=int, default=10)
     parser.add_argument('--verbose', type=bool, default=False)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
-    parser.add_argument('--noise_type', type=str, default='geo_normal')
+    parser.add_argument('--noise_type', type=str, default='corner')
     args = parser.parse_args()
     print(args)
 

@@ -154,7 +154,7 @@ if __name__ == "__main__":
         b = np.ones(m)/m
         diam_color = 3
         lamda = 0.5
-        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, (1-lamda)*get_ground_dist(data_pick_a[i,:], data_pick_b_noise[j,:], transport_type="high_dim", metric='sqeuclidean', diam=diam_color) + lamda*geo_dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, np.sqrt(get_ground_dist(data_pick_a[i,:], data_pick_b_noise[j,:], transport_type="high_dim", metric='sqeuclidean', diam=diam_color) + lamda*geo_dist), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
     else:
         raise ValueError("data not found")

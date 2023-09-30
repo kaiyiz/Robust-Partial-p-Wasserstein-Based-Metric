@@ -75,7 +75,7 @@ if __name__ == "__main__":
         data_pick_b_noise = add_noise(data_pick_b, noise_type = noise_type, noise_level=noise)
         data_pick_b_noise = shift_image(data_pick_b_noise, shift_pixel)
         start_time = time.time()
-        Parallel(n_jobs=1, prefer="threads")(delayed(levy_prokhorov_metric)(extract_mnist_mass(data_pick_a, i), extract_mnist_mass(data_pick_b_noise, j), get_ground_dist(extract_mnist_loc(data_pick_a, i), extract_mnist_loc(data_pick_b_noise, j), 'mnist_extract', 'minkowski'), all_res, i, j, start_time) for i in range(n) for j in range(n))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(levy_prokhorov_metric)(extract_mnist_mass(data_pick_a, i), extract_mnist_mass(data_pick_b_noise, j), get_ground_dist(extract_mnist_loc(data_pick_a, i), extract_mnist_loc(data_pick_b_noise, j), 'mnist_extract', 'minkowski'), all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
     elif data_name == "cifar10":
         start_time = time.time()

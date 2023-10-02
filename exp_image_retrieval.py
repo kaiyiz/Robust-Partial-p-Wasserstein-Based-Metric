@@ -15,7 +15,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def retrive_images(data_label, cur_metric, metric_name, top_k=10, verbose=False):
-    n = data_label.shape[0]
+    n = cur_metric.shape[0]
     top_k_images = np.zeros((n, top_k))
     for i in range(n):
         cur_dist = cur_metric[i, :]
@@ -38,20 +38,20 @@ def save_images(data_name, data_a, data_b, data_label, top_k_images, metric_name
     save_path = "./results/retrival_{}".format(argparse)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    n = data_label.shape[0]
     top_k = top_k_images.shape[1]
     ind = 0
+    n_request_per_class = data_a.shape[0] // 10
     for k in range(10):
         if data_name == "mnist":
             nn = 28
-            final_image = np.zeros((20*(top_k+1), data_a.shape[1]))
+            final_image = np.zeros((n_request_per_class*(top_k+1), data_a.shape[1]))
         elif data_name == "cifar10":
             nn = 32
-            final_image = np.zeros((20*(top_k+1), data_a.shape[1],3))
+            final_image = np.zeros((n_request_per_class*(top_k+1), data_a.shape[1],3))
         else:
             raise ValueError("data not found")
-        cur_data_a = data_a[k*20:(k+1)*20, :]
-        for i in range(20):
+        cur_data_a = data_a[k*n_request_per_class:(k+1)*n_request_per_class, :]
+        for i in range(n_request_per_class):
             cur_image_a = data_a[ind, :]
             final_image[i*(top_k+1), :] = cur_image_a
             # cur_label = data_label[i]
@@ -61,25 +61,25 @@ def save_images(data_name, data_a, data_b, data_label, top_k_images, metric_name
             ind += 1
         if data_name == "mnist":
             nn = 28
-            # final_image = final_image.reshape(20*nn, (top_k+1)*nn)
-            final_image = final_image.reshape(-1,nn,nn) # data shape 220*32*32*3
-            final_image = final_image.reshape(20,top_k+1,nn,nn)
+            # final_image = final_image.reshape(n_request_per_class*nn, (top_k+1)*nn)
+            final_image = final_image.reshape(-1,nn,nn) # data shape 2n_request_per_class*32*32*3
+            final_image = final_image.reshape(n_request_per_class,top_k+1,nn,nn)
             final_image = final_image.transpose(0,2,1,3)
-            final_image = final_image.reshape(20*nn,top_k+1*nn)
-            cur_image_a = cur_data_a.reshape(20,nn,nn)
+            final_image = final_image.reshape(n_request_per_class*nn,top_k+1*nn)
+            cur_image_a = cur_data_a.reshape(n_request_per_class,nn,nn)
             cur_image_a = cur_image_a.transpose(0,2,1)
-            cur_image_a = cur_image_a.reshape(20*nn,nn)
+            cur_image_a = cur_image_a.reshape(n_request_per_class*nn,nn)
             plts.imsave("{}/{}_label_{}_top_{}.png".format(save_path, metric_name, k, top_k), final_image, cmap='gray')
             plts.imsave("{}/label_{}.png".format(save_path, k), cur_image_a, cmap='gray')
         elif data_name == "cifar10":
             nn = 32
             final_image = final_image.reshape(-1,nn,nn,3) # data shape 220*32*32*3
-            final_image = final_image.reshape(20,top_k+1,nn,nn,3)
+            final_image = final_image.reshape(n_request_per_class,top_k+1,nn,nn,3)
             final_image = final_image.transpose(0,2,1,3,4)
-            final_image = final_image.reshape(20*nn,(top_k+1)*nn,3)
-            cur_image_a = cur_data_a.reshape(20,nn,nn,3)
+            final_image = final_image.reshape(n_request_per_class*nn,(top_k+1)*nn,3)
+            cur_image_a = cur_data_a.reshape(n_request_per_class,nn,nn,3)
             cur_image_a = cur_image_a.transpose(0,2,1,3)
-            cur_image_a = cur_image_a.reshape(20*nn,nn,3)
+            cur_image_a = cur_image_a.reshape(n_request_per_class*nn,nn,3)
             plts.imsave("{}/{}_label_{}_top_{}.png".format(save_path, metric_name, k, top_k), final_image)
             plts.imsave("{}/label_{}.png".format(save_path, k), cur_image_a)
         else:
@@ -104,15 +104,15 @@ def print_retrival_comp(top_k_images, data_label):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n', type=int, default=200)
+    parser.add_argument('--n', type=int, default=20)
     parser.add_argument('--delta', type=float, default=0.01)
     parser.add_argument('--data_name', type=str, default='mnist')
     parser.add_argument('--noise_st', type=float, default=0.0)
     parser.add_argument('--noise_ed', type=float, default=1.0)
     parser.add_argument('--noise_d', type=float, default=0.1)
     parser.add_argument('--shift_st', type=int, default=0)
-    parser.add_argument('--shift_ed', type=int, default=10)
-    parser.add_argument('--top_k', type=int, default=10)
+    parser.add_argument('--shift_ed', type=int, default=0)
+    parser.add_argument('--top_k', type=int, default=5)
     parser.add_argument('--verbose', type=bool, default=False)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--noise_type', type=str, default='corner')
@@ -163,12 +163,12 @@ if __name__ == "__main__":
 
             top_k_images, L1_precision = retrive_images(data_label, L1_metric, 'L1_metric', top_k=top_k, verbose=verbose)
             img_retrival_res[shift_ind, noise_ind, 0] = L1_precision
-            save_images(data_name, data_a, data_b, data_label, top_k_images, 'L1_metric', argparse)
+            # save_images(data_name, data_a, data_b, data_label, top_k_images, 'L1_metric', argparse)
             # print_retrival_comp(top_k_images, data_label)
 
             top_k_images, alpha_precision = retrive_images(data_label, alpha, 'distance_alpha', top_k=top_k, verbose=verbose)
             img_retrival_res[shift_ind, noise_ind, 1] = alpha_precision
-            save_images(data_name, data_a, data_b, data_label, top_k_images, 'distance_alpha', argparse)
+            # save_images(data_name, data_a, data_b, data_label, top_k_images, 'distance_alpha', argparse)
             # print_retrival_comp(top_k_images, data_label)
 
             top_k_images, alpha_OT_precision = retrive_images(data_label, alpha_OT, 'OT_at_alpha', top_k=top_k, verbose=verbose)
@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
             top_k_images, realtotalCost_precision = retrive_images(data_label, realtotalCost, 'real_total_OT_cost', top_k=top_k, verbose=verbose)
             img_retrival_res[shift_ind, noise_ind, 9] = realtotalCost_precision
-            save_images(data_name, data_a, data_b, data_label, top_k_images, 'real_total_OT_cost', argparse)
+            # save_images(data_name, data_a, data_b, data_label, top_k_images, 'real_total_OT_cost', argparse)
             # print_retrival_comp(top_k_images, data_label)
             shift_ind += 1
         noise_ind += 1

@@ -111,9 +111,13 @@ pdf_A_1 = normal_fun(bin_centers, mu1, sigma1)
 mu2 = 0.65
 sigma2 = 0.1
 pdf_A_2 = normal_fun(bin_centers, mu2, sigma2)
-wt1 = 0.4
-wt2 = 0.6
-hist_A = wt1*pdf_A_1 + wt2*pdf_A_2
+mu3 = 0.04
+sigma3 = 0.02
+pdf_A_3 = normal_fun(bin_centers, mu3, sigma3)
+wt1 = 0.3
+wt2 = 0.55
+wt3 = 0.15
+hist_A = wt1*pdf_A_1 + wt2*pdf_A_2 + wt3*pdf_A_3
 
 # Histogram B
 mu1 = 0.25 
@@ -125,9 +129,9 @@ pdf_B_2 = normal_fun(bin_centers, mu2, sigma2)
 mu3 = 0.96
 sigma3 = 0.02
 pdf_B_3 = normal_fun(bin_centers, mu3, sigma3)
-wt1 = 0.3
+wt1 = 0.2
 wt2 = 0.65
-wt3 = 0.05
+wt3 = 0.15
 hist_B = wt1*pdf_B_1 + wt2*pdf_B_2 + wt3*pdf_B_3
 
 # Normalize histograms

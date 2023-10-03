@@ -136,8 +136,8 @@ if __name__ == "__main__":
     all_res = np.zeros((n,data_size,10))
 
     if data_name == "mnist":
-        data_pick_a, data_pick_label = rand_pick_mnist(data, data_labels, n, 0)
-        data_pick_b, data_pick_label = rand_pick_mnist(data, data_labels, data_size, 1)
+        data_pick_a, data_pick_label_a = rand_pick_mnist(data, data_labels, n, 0)
+        data_pick_b, data_pick_label_b = rand_pick_mnist(data, data_labels, data_size, 1)
         data_pick_a_noise = add_noise(data_pick_a, noise_type = noise_type, noise_level=noise)
         data_pick_a_noise = shift_image(data_pick_a_noise, shift_pixel)
         dist = get_ground_dist(data_pick_a_noise[0,:], data_pick_b[1,:], 'fixed_bins_2d')
@@ -146,8 +146,8 @@ if __name__ == "__main__":
         end_time = time.time()
     elif data_name == "cifar10":
         start_time = time.time()
-        data_pick_a, data_pick_label = rand_pick_cifar10(data, data_labels, n, 0)
-        data_pick_b, data_pick_label = rand_pick_cifar10(data, data_labels, data_size, 1)
+        data_pick_a, data_pick_label_a = rand_pick_cifar10(data, data_labels, n, 0)
+        data_pick_b, data_pick_label_b = rand_pick_cifar10(data, data_labels, data_size, 1)
         data_pick_a_noise = add_noise_3d_matching(data_pick_a, noise_type = noise_type, noise_level=noise)
         geo_dist = get_ground_dist(data_pick_a_noise[0,:], data_pick_b[1,:], 'fixed_bins_2d')
         m = data_pick_a.shape[1]
@@ -164,4 +164,4 @@ if __name__ == "__main__":
     all_res[:,:,9] = L1_metric
 
     print("finish all job in {}s".format(end_time-start_time))
-    np.savez('./results/OTP_lp_metric_{}'.format(argparse), all_res=all_res, data_a=data_pick_a_noise, data_b=data_pick_b, mnist_pick_label=data_pick_label)
+    np.savez('./results/OTP_lp_metric_{}'.format(argparse), all_res=all_res, data_a=data_pick_a_noise, data_b=data_pick_b, data_pick_label_a=data_pick_label_a, data_pick_label_b=data_pick_label_b)

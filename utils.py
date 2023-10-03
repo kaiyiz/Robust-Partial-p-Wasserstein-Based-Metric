@@ -7,7 +7,8 @@ import tensorflow as tf
 def load_computed_matrix(n, dataset_name):
     npzfiles = np.load('./results/{}.npz'.format(dataset_name))
     all_res = npzfiles['all_res']
-    data_label = npzfiles['mnist_pick_label']
+    data_label_a = npzfiles['data_pick_label_a']
+    data_label_b = npzfiles['data_pick_label_b']
     data_a = npzfiles['data_a']
     data_b = npzfiles['data_b']
     alpha = all_res[:,:,0]
@@ -20,7 +21,7 @@ def load_computed_matrix(n, dataset_name):
     beta_normalized_maxdual = all_res[:,:,7]
     realtotalCost = all_res[:,:,8]
     L1_metric = all_res[:,:,9]
-    return  data_a, data_b, data_label, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric
+    return  data_a, data_b, data_label_a, data_label_b, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric
 
 def add_noise(data, noise_type = "uniform", noise_level=0.1):
     m = data.shape[0]

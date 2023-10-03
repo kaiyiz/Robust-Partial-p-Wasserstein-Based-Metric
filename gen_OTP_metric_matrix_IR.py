@@ -90,7 +90,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=No
     if j == 0:
         size = all_res.shape
         time_cur = time.time()
-        amount_of_work_done = i + j*size[0] + 1
+        amount_of_work_done = i*size[1] + 1
         time_spent = time_cur - time_start
         total_time = time_spent/(amount_of_work_done/(size[0]*size[1]))
         print("estimate to finish the job in {}s".format(total_time-time_spent))

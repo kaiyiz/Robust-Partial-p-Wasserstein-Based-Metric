@@ -61,7 +61,13 @@ def add_noise(data, noise_type = "uniform", noise_level=0.1):
                 noise[i,(nn-1)*nn] = 1
             elif mu == 3:
                 noise[i,(nn-1)*nn + nn-1] = 1
-        noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)      
+        noise = noise / np.sum(noise, axis=1).reshape(-1,1) * data.sum(axis=1).reshape(-1,1)    
+    elif noise_type == "rand1pxl":
+        # random pick one pixel and add noise to it
+        noise = np.zeros((m, n))
+        for i in range(m):
+            mu = np.random.randint(0, n)
+            noise[i,mu] = 1
     else:
         raise ValueError("noise type not found")
     data = (1 - noise_level) * data + noise_level * noise
@@ -76,8 +82,10 @@ def add_noise_3d_matching(data, noise_type = "uniform", noise_level=0.1):
     noise_ind = np.random.choice(n, int(n*noise_level), replace=False)
     if noise_type == "uniform":
         noise = np.random.rand(m, len(noise_ind), nn)
-    if noise_type == "blackout":
+    elif noise_type == "blackout":
         noise = np.zeros((m, len(noise_ind), nn))
+    elif noise_type == "whiteout":
+        noise = np.ones((m, len(noise_ind), nn))
     elif noise_type == "normal3d":
         mu_positions = np.array([(x, y, z) for x in [1/4, 1/2, 3/4] for y in [1/4, 1/2, 3/4] for z in [1/4, 1/2, 3/4]])
         noise = np.zeros((m, len(noise_ind), nn))

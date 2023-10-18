@@ -118,6 +118,7 @@ if __name__ == "__main__":
     parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--shift_pixel', type=int, default=0)
     parser.add_argument('--noise_type', type=str, default='corner')
+    parser.add_argument('--k', type=int, default=10)
 
     args = parser.parse_args()
     print(args)
@@ -129,11 +130,13 @@ if __name__ == "__main__":
     metric_scaler = args.metric_scaler
     shift_pixel = args.shift_pixel
     noise_type = args.noise_type
+    k = args.k
     argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_sp_{}_nt_{}".format(n, delta, data_name, noise, metric_scaler, shift_pixel, noise_type)
 
     data, data_labels = load_data(data_name)
-    data_size = int(data.shape[0]/10)
+    data_size = int(data.shape[0]/k)
     all_res = np.zeros((n,data_size,10))
+    print("data size: {}".format(all_res.shape))
 
     if data_name == "mnist":
         data_pick_a, data_pick_label_a = rand_pick_mnist(data, data_labels, n, 0)
@@ -149,6 +152,7 @@ if __name__ == "__main__":
         data_pick_a, data_pick_label_a = rand_pick_cifar10(data, data_labels, n, 0)
         data_pick_b, data_pick_label_b = rand_pick_cifar10(data, data_labels, data_size, 1)
         data_pick_a_noise = add_noise_3d_matching(data_pick_a, noise_type = noise_type, noise_level=noise)
+        # data_pick_a_noise = shift_image_3d(data_pick_a_noise, shift_pixel)
         geo_dist = get_ground_dist(data_pick_a_noise[0,:], data_pick_b[1,:], 'fixed_bins_2d')
         m = data_pick_a.shape[1]
         a = np.ones(m)/m

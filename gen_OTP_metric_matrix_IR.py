@@ -12,7 +12,7 @@ print(jpype.getDefaultJVMPath())
 jpype.startJVM("-Xmx128g", classpath=['./optimaltransport.jar'])
 from optimaltransport import Mapping
 
-from utils import load_data, add_noise, get_ground_dist, rand_pick_mnist, rand_pick_cifar10, add_noise_3d_matching, shift_image
+from utils import load_data, add_noise, get_ground_dist, rand_pick_mnist, rand_pick_cifar10, add_noise_3d_matching, shift_image, shift_image_3d
 
 
 """
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     parser.add_argument('--noise', type=float, default=0.0)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--shift_pixel', type=int, default=0)
-    parser.add_argument('--noise_type', type=str, default='corner')
+    parser.add_argument('--noise_type', type=str, default='cornor')
     parser.add_argument('--k', type=int, default=10)
 
     args = parser.parse_args()
@@ -152,7 +152,7 @@ if __name__ == "__main__":
         data_pick_a, data_pick_label_a = rand_pick_cifar10(data, data_labels, n, 0)
         data_pick_b, data_pick_label_b = rand_pick_cifar10(data, data_labels, data_size, 1)
         data_pick_a_noise = add_noise_3d_matching(data_pick_a, noise_type = noise_type, noise_level=noise)
-        # data_pick_a_noise = shift_image_3d(data_pick_a_noise, shift_pixel)
+        data_pick_a_noise = shift_image_3d(data_pick_a_noise, shift_pixel)
         geo_dist = get_ground_dist(data_pick_a_noise[0,:], data_pick_b[1,:], 'fixed_bins_2d')
         m = data_pick_a.shape[1]
         a = np.ones(m)/m

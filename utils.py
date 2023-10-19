@@ -115,6 +115,21 @@ def shift_image(data, shift=1):
     data_shift = data_shift.reshape(m, n)
     return data_shift
 
+def shift_image_3d(data, shift=1):
+    # shift image by shift pixels
+    m = data.shape[0]
+    n = data.shape[1]
+    k = data.shape[2]
+    nn = int(np.sqrt(n))
+    for i in range(m):
+        cur_img = data[i,:,:].reshape(nn, nn, k)
+        cur_img_up = cur_img[:, :shift, :]
+        cur_img_down = cur_img[:, shift:, :]
+        cur_img = np.concatenate((cur_img_down, cur_img_up), axis=1)
+        cur_img = cur_img.reshape(n, k)
+        data[i,:,:] = cur_img
+    return data
+
 def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
     # eps = Contamination proportion
     # n = number of samples

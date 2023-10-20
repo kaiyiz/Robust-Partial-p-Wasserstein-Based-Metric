@@ -130,6 +130,15 @@ def shift_image_3d(data, shift=1):
         data[i,:,:] = cur_img
     return data
 
+def shift_image_color(data, shift=1):
+    # shift the color of the image in color space
+    # random find a color channel and add shift/255 to it
+    k = data.shape[2]
+    channel = np.random.randint(0, k)
+    data[:,:,channel] = data[:,:,channel] + shift/255
+    data[np.nonzero(data>1)] = data[np.nonzero(data>1)] - 1
+    return data
+
 def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
     # eps = Contamination proportion
     # n = number of samples

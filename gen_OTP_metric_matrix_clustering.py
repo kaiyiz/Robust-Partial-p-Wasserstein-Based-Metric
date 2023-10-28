@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     if data_name == "mnist":
         data_pick_a, data_pick_label = rand_pick_mnist(data, data_labels, n, 0)
-        data_pick_b, data_pick_label = rand_pick_mnist(data, data_labels, n, 1)
+        data_pick_b = data_pick_a
         data_pick_b_noise = add_noise(data_pick_b, noise_type = noise_type, noise_level=noise)
         data_pick_b_noise = shift_image(data_pick_b_noise, shift_pixel)
         dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'fixed_bins_2d')
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     elif data_name == "cifar10":
         start_time = time.time()
         data_pick_a, data_pick_label = rand_pick_cifar10(data, data_labels, n, 0)
-        data_pick_b, data_pick_label = rand_pick_cifar10(data, data_labels, n, 1)
+        data_pick_b = data_pick_a
         data_pick_b_noise = add_noise_3d_matching(data_pick_b, noise_type = noise_type, noise_level=noise)
         geo_dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'fixed_bins_2d')
         m = data_pick_a.shape[1]

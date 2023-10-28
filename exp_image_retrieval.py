@@ -129,6 +129,7 @@ if __name__ == "__main__":
     parser.add_argument('--noise_d', type=float, default=0.1)
     parser.add_argument('--shift_st', type=int, default=0)
     parser.add_argument('--shift_ed', type=int, default=0)
+    parser.add_argument('--shift_d', type=int, default=1)
     parser.add_argument('--top_k', type=int, default=5)
     parser.add_argument('--verbose', type=bool, default=False)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
@@ -147,9 +148,10 @@ if __name__ == "__main__":
     metric_scaler = args.metric_scaler
     shift_pixel_st = args.shift_st
     shift_pixel_ed = args.shift_ed
+    shift_pixel_d = args.shift_d
     noise_type = args.noise_type
     noise_rates = np.arange(noise_st, noise_ed+noise_d, noise_d)
-    shift_pixels = np.arange(shift_pixel_st, shift_pixel_ed+1, 1)
+    shift_pixels = np.arange(shift_pixel_st, shift_pixel_ed+1, shift_pixel_d)
 
     img_retrival_res = np.zeros((len(shift_pixels), len(noise_rates), 10))
     noise_ind = 0
@@ -174,50 +176,49 @@ if __name__ == "__main__":
             data_name_ = 'OTP_lp_metric_{}'.format(argparse)
             try:
                 data_a, data_b, data_label_a, data_label_b, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric = load_computed_matrix(n, data_name_)
-
-                top_k_images, L1_precision = retrive_images(data_label_a, data_label_b, L1_metric, 'L1_metric', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 0] = L1_precision
-                save_images(data_name, data_a, data_b, top_k_images, 'L1_metric', argparse)
-                # print_retrival_comp(top_k_images, data_label_b)
-
-                top_k_images, alpha_precision = retrive_images(data_label_a, data_label_b, alpha, 'distance_alpha', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 1] = alpha_precision
-                save_images(data_name, data_a, data_b, top_k_images, 'distance_alpha', argparse)
-                # print_retrival_comp(top_k_images, data_label)
-
-                top_k_images, alpha_OT_precision = retrive_images(data_label_a, data_label_b, alpha_OT, 'OT_at_alpha', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 2] = alpha_OT_precision
-                # print_retrival_comp(top_k_images, data_label)
-
-                top_k_images, alpha_normalized_precision = retrive_images(data_label_a, data_label_b, alpha_normalized, 'distance_alpha_normalized', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 3] = alpha_normalized_precision
-                # print_retrival_comp(top_k_images, data_label)
-
-                top_k_images, alpha_normalized_OT_precision = retrive_images(data_label_a, data_label_b, alpha_normalized_OT, 'OT_at_alpha_normalized', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 4] = alpha_normalized_OT_precision
-                # print_retrival_comp(top_k_images, data_label)
-
-                top_k_images, beta_precision = retrive_images(data_label_a, data_label_b, beta, 'distance_beta', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 5] = beta_precision
-                # print_retrival_comp(top_k_images, data_label)
-
-                top_k_images, beta_maxdual_precision = retrive_images(data_label_a, data_label_b, beta_maxdual, 'maxdual_at_beta', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 6] = beta_maxdual_precision
-                # print_retrival_comp(top_k_images, data_label)
-
-                top_k_images, beta_normalized_precision = retrive_images(data_label_a, data_label_b, beta_normalized, 'distance_beta_normalized', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 7] = beta_normalized_precision
-                # print_retrival_comp(top_k_images, data_label)
-
-                top_k_images, beta_normalized_maxdual_precision = retrive_images(data_label_a, data_label_b, beta_normalized_maxdual, 'maxdual_at_beta_normalized', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 8] = beta_normalized_maxdual_precision
-                # print_retrival_comp(top_k_images, data_label)
-
-                top_k_images, realtotalCost_precision = retrive_images(data_label_a, data_label_b, realtotalCost, 'real_total_OT_cost', top_k=top_k, verbose=verbose)
-                img_retrival_res[shift_ind, noise_ind, 9] = realtotalCost_precision
-                save_images(data_name, data_a, data_b, top_k_images, 'real_total_OT_cost', argparse)
             except:
                 print("data {} not found, run gen_OTP_metric_matrix.py first".format(data_name_))
+            top_k_images, L1_precision = retrive_images(data_label_a, data_label_b, L1_metric, 'L1_metric', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 0] = L1_precision
+            save_images(data_name, data_a, data_b, top_k_images, 'L1_metric', argparse)
+            # print_retrival_comp(top_k_images, data_label_b)
+
+            top_k_images, alpha_precision = retrive_images(data_label_a, data_label_b, alpha, 'distance_alpha', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 1] = alpha_precision
+            save_images(data_name, data_a, data_b, top_k_images, 'distance_alpha', argparse)
+            # print_retrival_comp(top_k_images, data_label)
+
+            top_k_images, alpha_OT_precision = retrive_images(data_label_a, data_label_b, alpha_OT, 'OT_at_alpha', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 2] = alpha_OT_precision
+            # print_retrival_comp(top_k_images, data_label)
+
+            top_k_images, alpha_normalized_precision = retrive_images(data_label_a, data_label_b, alpha_normalized, 'distance_alpha_normalized', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 3] = alpha_normalized_precision
+            # print_retrival_comp(top_k_images, data_label)
+
+            top_k_images, alpha_normalized_OT_precision = retrive_images(data_label_a, data_label_b, alpha_normalized_OT, 'OT_at_alpha_normalized', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 4] = alpha_normalized_OT_precision
+            # print_retrival_comp(top_k_images, data_label)
+
+            top_k_images, beta_precision = retrive_images(data_label_a, data_label_b, beta, 'distance_beta', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 5] = beta_precision
+            # print_retrival_comp(top_k_images, data_label)
+
+            top_k_images, beta_maxdual_precision = retrive_images(data_label_a, data_label_b, beta_maxdual, 'maxdual_at_beta', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 6] = beta_maxdual_precision
+            # print_retrival_comp(top_k_images, data_label)
+
+            top_k_images, beta_normalized_precision = retrive_images(data_label_a, data_label_b, beta_normalized, 'distance_beta_normalized', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 7] = beta_normalized_precision
+            # print_retrival_comp(top_k_images, data_label)
+
+            top_k_images, beta_normalized_maxdual_precision = retrive_images(data_label_a, data_label_b, beta_normalized_maxdual, 'maxdual_at_beta_normalized', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 8] = beta_normalized_maxdual_precision
+            # print_retrival_comp(top_k_images, data_label)
+
+            top_k_images, realtotalCost_precision = retrive_images(data_label_a, data_label_b, realtotalCost, 'real_total_OT_cost', top_k=top_k, verbose=verbose)
+            img_retrival_res[shift_ind, noise_ind, 9] = realtotalCost_precision
+            save_images(data_name, data_a, data_b, top_k_images, 'real_total_OT_cost', argparse)
             # print_retrival_comp(top_k_images, data_label)
             shift_ind += 1
         noise_ind += 1

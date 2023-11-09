@@ -7,8 +7,8 @@ import numpy as np
 import argparse
 import matplotlib.pyplot as plts
 import pandas as pd
-from scipy.spatial.distance import cdist
-from utils import load_data, load_computed_matrix
+
+from utils import load_computed_matrix
 import os
 
 import warnings

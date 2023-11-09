@@ -117,7 +117,7 @@ if __name__ == "__main__":
     parser.add_argument('--noise', type=float, default=0.0)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--shift_pixel', type=int, default=0)
-    parser.add_argument('--noise_type', type=str, default='white_out')
+    parser.add_argument('--noise_type', type=str, default='rand1pxl')
 
     args = parser.parse_args()
     print(args)
@@ -135,32 +135,35 @@ if __name__ == "__main__":
     all_res = np.zeros((n,n,10))
 
     if data_name == "mnist":
-        data_pick_a, data_pick_label = rand_pick_mnist(data, data_labels, n, 0)
+        data_pick_a, data_pick_label_a = rand_pick_mnist(data, data_labels, n, 0)
         data_pick_b = data_pick_a
-        data_pick_b_noise = add_noise(data_pick_b, noise_type = noise_type, noise_level=noise)
-        data_pick_b_noise = shift_image(data_pick_b_noise, shift_pixel)
-        dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'fixed_bins_2d')
+        data_pick_label_b = data_pick_label_a
+        data_pick_a_noise = add_noise(data_pick_a, noise_type = noise_type, noise_level=noise)
+        data_pick_a_noise = shift_image(data_pick_a_noise, shift_pixel)
+        dist = get_ground_dist(data_pick_a_noise[0,:], data_pick_b[1,:], 'fixed_bins_2d')
         start_time = time.time()
-        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(data_pick_a[i,:], data_pick_b_noise[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(data_pick_a_noise[i,:], data_pick_b[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
     elif data_name == "cifar10":
         start_time = time.time()
-        data_pick_a, data_pick_label = rand_pick_cifar10(data, data_labels, n, 0)
+        data_pick_a, data_pick_label_a = rand_pick_cifar10(data, data_labels, n, 0)
         data_pick_b = data_pick_a
-        data_pick_b_noise = add_noise_3d_matching(data_pick_b, noise_type = noise_type, noise_level=noise)
-        geo_dist = get_ground_dist(data_pick_a[0,:], data_pick_b_noise[1,:], 'fixed_bins_2d')
+        data_pick_label_b = data_pick_label_a
+        data_pick_a_noise = add_noise_3d_matching(data_pick_a, noise_type = noise_type, noise_level=noise)
+        data_pick_a_noise = shift_image_color(data_pick_a_noise, shift_pixel)
+        geo_dist = get_ground_dist(data_pick_a_noise[0,:], data_pick_b[1,:], 'fixed_bins_2d')
         m = data_pick_a.shape[1]
         a = np.ones(m)/m
         b = np.ones(m)/m
         diam_color = 3
         lamda = 0.5
-        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, np.sqrt(get_ground_dist(data_pick_a[i,:], data_pick_b_noise[j,:], transport_type="high_dim", metric='sqeuclidean', diam=diam_color) + lamda*geo_dist), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, np.sqrt(get_ground_dist(data_pick_a_noise[i,:], data_pick_b[j,:], transport_type="high_dim", metric='sqeuclidean', diam=diam_color) + lamda*geo_dist), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
     else:
         raise ValueError("data not found")
 
-    L1_metric = cdist(data_pick_a.reshape(int(n),-1), data_pick_b_noise.reshape(int(n),-1), metric='minkowski', p=1)
+    L1_metric = cdist(data_pick_a_noise.reshape(int(n),-1), data_pick_b.reshape(int(n),-1), metric='minkowski', p=1)
     all_res[:,:,9] = L1_metric
 
     print("finish all job in {}s".format(end_time-start_time))
-    np.savez('./results/OTP_lp_metric_{}'.format(argparse), all_res=all_res, data_a=data_pick_a, data_b=data_pick_b_noise, mnist_pick_label=data_pick_label)
+    np.savez('./results/OTP_lp_metric_{}'.format(argparse), all_res=all_res, data_a=data_pick_a_noise, data_b=data_pick_b, data_pick_label_a=data_pick_label_a, data_pick_label_b=data_pick_label_b)

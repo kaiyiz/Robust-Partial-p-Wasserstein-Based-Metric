@@ -5,7 +5,7 @@ import time
 
 from joblib import Parallel, delayed
 
-from utils import load_data, add_noise, get_ground_dist, rand_pick_mnist, rand_pick_cifar10, add_noise_3d_matching, shift_image, extract_mnist_mass, extract_mnist_loc
+from utils import *
 
 
 """
@@ -23,19 +23,35 @@ def levy_prokhorov_metric(X, Y, dist, all_res=None, i=0, j=0, time_start=None):
 
     # Create a list of tuples (cost, edges), where each tuple contains a unique cost and the edges with that cost
     costs_edges = [(cost, list(zip(*np.where(dist == cost)))) for cost in np.unique(dist)]
-
-    # Start with the second largest cost
-    for cost, edges in costs_edges:
-        # Create the δ-disc graph
-        for ind_x, ind_j in edges:
-            G.add_edge('A{}'.format(ind_x), 'B{}'.format(ind_j), cost=cost)
-
+    # Do binary search to find the largest cost such that the maximum flow plus that cost is less than 1
+    low = 0
+    high = len(costs_edges) - 1
+    last_mid = 0
+    while low < high:
+        mid = (low + high) // 2
+        if mid == low:
+            break
+        elif mid > last_mid:
+            # add edges from low to mid
+            for ind in range(low, mid):
+                cost, edges = costs_edges[ind]
+                for ind_x, ind_j in edges:
+                    G.add_edge('A{}'.format(ind_x), 'B{}'.format(ind_j), cost=cost)
+        else:
+            # remove edges from mid to high
+            for ind in range(mid, high):
+                cost, edges = costs_edges[ind]
+                for ind_x, ind_j in edges:
+                    G.remove_edge('A{}'.format(ind_x), 'B{}'.format(ind_j))
         # Compute the maximum flow
         flow_value, flow_dict = nx.maximum_flow(G, 'source', 'sink')
 
         # Check if the maximum flow plus δ is less than 1
-        if flow_value + cost >= 1:
-            break
+        if flow_value + cost < 1:
+            low = mid
+        else:
+            high = mid
+        last_mid = mid
 
     if j == 0:
         size = all_res.shape
@@ -45,6 +61,7 @@ def levy_prokhorov_metric(X, Y, dist, all_res=None, i=0, j=0, time_start=None):
         total_time = time_spent/(amount_of_work_done/(size[0]*size[1]))
         print("estimate time finish computing Lévy_Prokhorov distance in {}s".format(total_time-time_spent))
 
+    cost, edges = costs_edges[(low + high) // 2]
     all_res[i,j] = cost
 
 if __name__ == "__main__":
@@ -75,7 +92,7 @@ if __name__ == "__main__":
         data_pick_b_noise = add_noise(data_pick_b, noise_type = noise_type, noise_level=noise)
         data_pick_b_noise = shift_image(data_pick_b_noise, shift_pixel)
         start_time = time.time()
-        Parallel(n_jobs=-1, prefer="threads")(delayed(levy_prokhorov_metric)(extract_mnist_mass(data_pick_a, i), extract_mnist_mass(data_pick_b_noise, j), get_ground_dist(extract_mnist_loc(data_pick_a, i), extract_mnist_loc(data_pick_b_noise, j), 'mnist_extract', 'minkowski'), all_res, i, j, start_time) for i in range(n) for j in range(n))
+        Parallel(n_jobs=1, prefer="threads")(delayed(levy_prokhorov_metric)(extract_mnist_mass(data_pick_a, i), extract_mnist_mass(data_pick_b_noise, j), get_ground_dist(extract_mnist_loc(data_pick_a, i), extract_mnist_loc(data_pick_b_noise, j), 'mnist_extract', 'minkowski'), all_res, i, j, start_time) for i in range(n) for j in range(n))
         end_time = time.time()
     elif data_name == "cifar10":
         start_time = time.time()

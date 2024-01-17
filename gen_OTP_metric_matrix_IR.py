@@ -32,7 +32,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=No
     APinfo_cleaned = APinfo[clean_mask]
 
     cost_AP = APinfo_cleaned[:,4] * APinfo_cleaned[:,2]
-    cumCost = np.cumsum(cost_AP)
+    cumCost = np.sqrt(np.cumsum(cost_AP))
     real_total_cost = gtSolver.getTotalCost()
     if real_total_cost == 0:
         cumCost = cumCost * 0.0
@@ -85,7 +85,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, all_res=No
     beta_normalized_maxdual = normalized_maxdual[d_ind_a] + (normalized_maxdual[d_ind_b]-normalized_maxdual[d_ind_a])*(beta_normalized-flowProgress[d_ind_a])/(flowProgress[d_ind_b]-flowProgress[d_ind_a])
     beta_normalized = 1 - beta_normalized
     
-    realtotalCost = gtSolver.getTotalCost()
+    realtotalCost = np.sqrt(gtSolver.getTotalCost())
 
     if j == 0:
         size = all_res.shape
@@ -160,7 +160,7 @@ if __name__ == "__main__":
         b = np.ones(m)/m
         diam_color = 3
         lamda = 0.5
-        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, np.sqrt(get_ground_dist(data_pick_a_noise[i,:], data_pick_b[j,:], transport_type="high_dim", metric='sqeuclidean', diam=diam_color) + lamda*geo_dist), delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(data_size))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(a, b, get_ground_dist(data_pick_a_noise[i,:], data_pick_b[j,:], transport_type="high_dim", metric='sqeuclidean', diam=diam_color) + lamda*geo_dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(data_size))
         end_time = time.time()
     else:
         raise ValueError("data not found")

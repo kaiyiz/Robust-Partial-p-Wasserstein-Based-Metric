@@ -111,13 +111,13 @@ def find_intersection_point(x1, y1, x2, y2):
 if __name__ == "__main__":
     # LOAD Data
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n', type=int, default=200)
+    parser.add_argument('--n', type=int, default=20)
     parser.add_argument('--delta', type=float, default=0.01)
     parser.add_argument('--data_name', type=str, default='cifar10')
     parser.add_argument('--noise', type=float, default=0.0)
     parser.add_argument('--metric_scaler', type=float, default=1.0)
     parser.add_argument('--shift_pixel', type=int, default=0)
-    parser.add_argument('--noise_type', type=str, default='white_out')
+    parser.add_argument('--noise_type', type=str, default='whiteout')
 
     args = parser.parse_args()
     print(args)

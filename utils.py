@@ -166,7 +166,7 @@ def rand_pick_mnist(mnist, mnist_labels, n=1000, seed = 1):
 
     return mnist_pick, mnist_pick_label
 
-def get_ground_dist(a, b, transport_type="fixed_bins_2d", metric='euclidean', diam=1):
+def get_ground_dist(a, b, transport_type="fixed_bins_2d", metric='sqeuclidean', diam=1):
     m = a.shape[0]
     if len(a.shape) == 1:
         d = 1
@@ -187,7 +187,7 @@ def get_ground_dist(a, b, transport_type="fixed_bins_2d", metric='euclidean', di
         raise ValueError("transport type not found")
     return dist
 
-def computeDistMatrixGrid2d(n,metric='euclidean'):
+def computeDistMatrixGrid2d(n,metric='sqeuclidean'):
     A = np.zeros((n**2,2))
     iter = 0
     for i in range(n):

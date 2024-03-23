@@ -1,4 +1,4 @@
-# This experiment is to test the convergence rate of our OTP metric
+# This experiment is to test the convergence rate of our PRW
 
 import argparse
 import numpy as np
@@ -104,7 +104,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, i=0, j=0, 
     APinfo_cleaned = APinfo[clean_mask]
 
     cost_AP = (APinfo_cleaned[:,4]/alphaa) * (APinfo_cleaned[:,2]/(alphaa*nz))
-    cumCost = np.sqrt(np.cumsum(cost_AP))
+    cumCost =np.sqrt(np.cumsum(cost_AP))
     # cumCost = np.cumsum(cost_AP)/(alphaa*alphaa*nz)
 
     cumCost *= metric_scaler
@@ -158,7 +158,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, i=0, j=0, 
 
     return alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost
 
-def cell_spliting_filter_2d(X, Y, n_cells=16):
+def cell_spliting_filter_2d(X, Y, n_cells=16, p=2):
     # this function is to assign each point in X and Y to a cell in 2d space, and then compute the cell-wise cost matrix, return the mass of each cell in X and Y, and the cell-wise cost matrix
     # X: source distribution points
     # Y: target distribution points
@@ -184,7 +184,7 @@ def cell_spliting_filter_2d(X, Y, n_cells=16):
             y2 = j % n_cells
             a_centers[i] = np.array([x1+0.5, y1+0.5])/n_cells
             b_centers[j] = np.array([x2+0.5, y2+0.5])/n_cells
-            cost[i,j] = np.sum((a_centers[i]-b_centers[j])**2)
+            cost[i,j] = np.sum((a_centers[i]-b_centers[j])**p)
     # makes aure 0<X,Y<1 for all points, if not, shift the points to boundary   
     X = np.where(X>1, 1, X)
     X = np.where(X<0, 0, X)
@@ -234,109 +234,133 @@ def sample_from_combined_gaussians(mu_a, mu_b, cov, cur_sample_size):
 
     return samples
 
-nn = np.linspace(1, 4, 10)
+nn = np.linspace(1, 6, 10)
 sample_size = [int(10**i) for i in nn]
-N = 5
+N = 10
 d = [2]
-ms = [1]
+ms = [0.1, 1, 10]
 d_OTP_metric = np.zeros((len(sample_size), len(d), len(ms), N))
 d_emd = np.zeros((len(sample_size), len(d), N))
-delta = 0.001
+d_l1 = np.zeros((len(sample_size), len(d), N))
+delta = 1e-6
 dist_type = 'sqeuclidean'
-rand_type = 'binormal'
+rand_type = 'uniform'
 mu_a_d = 0.1
 mu_b_d = 0.9
 cov_value = 0.0001
 discrete = True
-argparse = "converge_exp_N_{}_2points_p_{}_dist_{}_rand_{}_mu_{}_cov_{}_discrete_{}".format(N, delta, dist_type, rand_type, mu_a_d, cov_value, discrete)
+argparse = "converge_exp_N_{}_2points_p_{}_dist_{}_rand_{}_mu_{}_cov_{}_discrete_{}_ms_{}".format(N, delta, dist_type, rand_type, mu_a_d, cov_value, discrete, ms)
+rerun = True
 
-# Generate random data
-for i in range(len(sample_size)):
-    for j in range(len(d)):
-        mu_a = np.zeros(d[j])+mu_a_d
-        mu_b = np.zeros(d[j])+mu_b_d
-        cov = np.eye(d[j])*cov_value
-        for k in range(N):
-            cur_sample_size = sample_size[i]
-            np.random.seed(k)
-            if rand_type == 'uniform':
-                X = np.random.rand(cur_sample_size, d[j])
-                Y = np.random.rand(cur_sample_size, d[j])
-            # or generate data from a normal distribution, given a mean and covariance matrix in d dimensions
-            elif rand_type == 'normal': 
-                X = np.random.multivariate_normal(mu_a, cov, cur_sample_size)
-                Y = np.random.multivariate_normal(mu_b, cov, cur_sample_size)
-            elif rand_type == 'binormal':
-                X = sample_from_combined_gaussians(mu_a, mu_b, cov, cur_sample_size)
-                Y = sample_from_combined_gaussians(mu_a, mu_b, cov, cur_sample_size)
-            elif rand_type == 'two_points':
-                a = np.ones((cur_sample_size, d[j])) * mu_a
-                b = np.ones((cur_sample_size, d[j])) * mu_b
-                choices_X = np.random.randint(0, 2, size=cur_sample_size)
-                choices_Y = np.random.randint(0, 2, size=cur_sample_size)
-                X = np.where(choices_X[:, None], a, b)
-                Y = np.where(choices_Y[:, None], a, b)
-            dist = cdist(X, Y, metric=dist_type)
-            a = np.ones(cur_sample_size) / cur_sample_size
-            b = np.ones(cur_sample_size) / cur_sample_size
+# try:
+#     data = np.load('./results/converge_exp_sample_converge_rate_fix_dim_2_Wasserstein_{}.npz'.format(argparse))
+#     d_OTP_metric = data['d_OTP_metric']
+#     d_emd = data['d_emd']
+#     sample_size = data['sample_size']
+#     d = data['d']
+#     ms = data['ms']
+# except:
+#     print('file not found, rerun')
+#     rerun = True
 
-            if discrete:
-                a, b, dist = cell_spliting_filter_2d(X, Y, n_cells=16)
+if rerun:
+    for i in range(len(sample_size)):
+        for j in range(len(d)):
+            mu_a = np.zeros(d[j])+mu_a_d
+            mu_b = np.zeros(d[j])+mu_b_d
+            cov = np.eye(d[j])*cov_value
+            for k in range(N):
+                cur_sample_size = sample_size[i]
+                np.random.seed(k)
+                if rand_type == 'uniform':
+                    X = np.random.rand(cur_sample_size, d[j])
+                    Y = np.random.rand(cur_sample_size, d[j])
+                # or generate data from a normal distribution, given a mean and covariance matrix in d dimensions
+                elif rand_type == 'normal': 
+                    X = np.random.multivariate_normal(mu_a, cov, cur_sample_size)
+                    Y = np.random.multivariate_normal(mu_b, cov, cur_sample_size)
+                elif rand_type == 'binormal':
+                    X = sample_from_combined_gaussians(mu_a, mu_b, cov, cur_sample_size)
+                    Y = sample_from_combined_gaussians(mu_a, mu_b, cov, cur_sample_size)
+                elif rand_type == 'two_points':
+                    a = np.ones((cur_sample_size, d[j])) * mu_a
+                    b = np.ones((cur_sample_size, d[j])) * mu_b
+                    choices_X = np.random.randint(0, 2, size=cur_sample_size)
+                    choices_Y = np.random.randint(0, 2, size=cur_sample_size)
+                    X = np.where(choices_X[:, None], a, b)
+                    Y = np.where(choices_Y[:, None], a, b)
 
-            res_emd = ot.emd2(a, b, dist, processes=1, numItermax=100000000)
-            d_emd[i,j,k] = np.sqrt(res_emd)
-            # d_emd[i,j,k] = res_emd
+                if discrete:
+                    a, b, dist = cell_spliting_filter_2d(X, Y, n_cells=4, p=2)
+                    # dist = dist**2
+                    d_l1[i,j,k] = np.sum(np.abs(a-b))
+                else:
+                    dist = cdist(X, Y, metric=dist_type)
+                    a = np.ones(cur_sample_size) / cur_sample_size
+                    b = np.ones(cur_sample_size) / cur_sample_size
 
-            for m in range(len(ms)):
-                metric_scaler = ms[m]
-                alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost = OTP_metric(X=a, Y=b, dist=dist, delta=delta, metric_scaler=metric_scaler, i=i, j=j, sqrt_cost=True)
-                d_OTP_metric[i,j,m,k] = alpha
+                res_emd = ot.emd2(a, b, dist, processes=1, numItermax=100000000)
+                d_emd[i,j,k] = np.sqrt(res_emd)
+                # d_emd[i,j,k] = res_emd
 
-            print('sample size: {}, dim: {}, metric scaler: {}, emd: {}, OTP: {}, k: {}'.format(cur_sample_size, d[j], metric_scaler, d_emd[i,j,k], d_OTP_metric[i,j,m,k], k))
+                for m in range(len(ms)):
+                    metric_scaler = ms[m]
+                    alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost = OTP_metric(X=a, Y=b, dist=dist, delta=delta, metric_scaler=metric_scaler, i=i, j=j, sqrt_cost=True)
+                    d_OTP_metric[i,j,m,k] = alpha
 
-# save the results
-print('save results')
-np.savez('./results/converge_exp_sample_converge_rate_fix_dim_2_Wasserstein_{}'.format(argparse), d_OTP_metric=d_OTP_metric, d_emd=d_emd, sample_size=sample_size, d=d, ms=ms)
+                print('sample size: {}, dim: {}, metric scaler: {}, emd: {}, OTP: {}, k: {}'.format(cur_sample_size, d[j], metric_scaler, d_emd[i,j,k], d_OTP_metric[i,j,m,k], k))
+    print('save results')
+    np.savez('./results/converge_exp_sample_converge_rate_fix_dim_2_Wasserstein_{}'.format(argparse), d_OTP_metric=d_OTP_metric, d_emd=d_emd, sample_size=sample_size, d=d, ms=ms)
 
 # plot the cost curve with error band (a shaded region), x-axis: sample size (log scale), y-axis: average distance (log scale)
 fig = plt.figure()
 # make figure wide enough to show all subplots
-fig.set_figwidth(15)
+fig.set_figwidth(5)
+color_codes = ['g', 'b', 'c', 'm', 'y']
+col_i = 0
 for k in range(len(d)):
     ax = fig.add_subplot(1, len(d), k+1)
     # make subplots spearate enough not to overlap
-    ax.set_position([0.1+k*0.3, 0.2, 0.2, 0.6])
+    # ax.set_position([0.1+k*0.3, 0.2, 0.2, 0.6])
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlabel('sample size')
-    ax.set_ylabel('average distance')
-    ax.set_title('d = {}'.format(d[k]))
+    ax.set_xlabel('Sample Size')
+    ax.set_ylabel('Cost')
     for m in range(len(ms)):
         d_OTP_metric_cur = d_OTP_metric[:,k,m,:]
         y = np.mean(d_OTP_metric_cur, axis=1)
         error = np.std(d_OTP_metric_cur, axis=1)
-        # ax.plot(sample_size, y, label='OTP metric, k = {}'.format(float(1/ms[m])))
-        ax.fill_between(sample_size, y-error, y+error, label='OTP metric, k = {}'.format(float(1/ms[m])))
-        print('OTP metric, y: {}, error: {}'.format(y, error))
+        ax.plot(sample_size, y, label='(2,{})-RPW'.format(float(1/ms[m])), color=color_codes[col_i])
+        ax.fill_between(sample_size, y-error, y+error, color=color_codes[col_i], alpha=0.2)
+        print('PRW, y: {}, error: {}'.format(y, error))
         print('slope: {}'.format(np.polyfit(np.log(sample_size), np.log(y), 1)[0]))
-
-        # fill zeros with 1e-9 to avoid dividing by zero
-        d_emd_ = np.where(d_emd==0, 1e-9, d_emd) 
-        y = np.mean(d_OTP_metric_cur/d_emd_[:,k,:], axis=1)
-        ax.plot(sample_size, y, label='OTP metric/EMD, k = {}'.format(float(1/ms[m])))
+        col_i += 1
+        # # fill zeros with 1e-9 to avoid dividing by zero
+        # d_emd_ = np.where(d_emd==0, 1e-9, d_emd) 
+        # y = np.mean(d_OTP_metric_cur/d_emd_[:,k,:], axis=1)
+        # ax.plot(sample_size, y, label='PRW/EMD, k = {}'.format(float(1/ms[m])))
 
 
     d_emd_cur = d_emd[:,k,:]
     y = np.mean(d_emd_cur, axis=1)
     error = np.std(d_emd_cur, axis=1)
-    # ax.plot(sample_size, y, label='2-Wasserstein')
-    ax.fill_between(sample_size, y-error, y+error, label='2-Wasserstein, k = {}'.format(float(1/ms[m])))
+    ax.plot(sample_size, y, label='2-Wasserstein', color='r')
+    ax.fill_between(sample_size, y-error, y+error, color='r', alpha=0.2)
     print('2-Wasserstein, y: {}, error: {}'.format(y, error))
     print('slope: {}'.format(np.polyfit(np.log(sample_size), np.log(y), 1)[0]))
+
+    if discrete:
+        d_l1_cur = d_l1[:,k,:]
+        y = np.mean(d_l1_cur, axis=1)
+        error = np.std(d_l1_cur, axis=1)
+        ax.plot(sample_size, y, label='TV', color='orange')
+        ax.fill_between(sample_size, y-error, y+error, color='orange', alpha=0.2)
+        print('TV, y: {}, error: {}'.format(y, error))
+        print('slope: {}'.format(np.polyfit(np.log(sample_size), np.log(y), 1)[0]))
 
     ax.legend()
     # make legend small enough to fit in the figure, upper right corner
     ax.legend(loc='lower left', prop={'size': 8})
 
 # save figure with a name that contains all the parameters, so that we can compare different experiments
-fig.savefig('./results/converge_exp_sample_converge_rate_fix_dim_2_Wasserstein_{}.png'.format(argparse), dpi=fig.dpi)
+fig.savefig('./results/converge_exp_sample_converge_rate_fix_dim_2_Wasserstein_{}.png'.format(argparse), dpi=fig.dpi, transparent=True)

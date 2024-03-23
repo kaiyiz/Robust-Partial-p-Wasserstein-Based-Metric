@@ -8,7 +8,7 @@ import argparse
 import matplotlib.pyplot as plts
 import pandas as pd
 from scipy.spatial.distance import cdist
-from utils import load_data, load_computed_matrix
+from utils import load_data, load_computed_matrix, load_computed_matrix_w1w2
 import os
 
 import warnings
@@ -22,15 +22,19 @@ def retrive_images(data_label_a, data_label_b, cur_metric, metric_name, top_k=10
         top_k_images[i, :] = np.argsort(cur_dist)[:top_k]
     correct = 0
     # precision is the percentage of images in the top_k images are in the same class
+    acc_query = np.zeros(n)
     for i in range(n):
         cur_label = data_label_a[i]
         cur_top_k = top_k_images[i, :]
         cur_top_k_label = data_label_b[cur_top_k.astype(int)]
-        correct += np.sum(cur_top_k_label == cur_label) 
-    precision = correct / (n * top_k)
+        acc_query[i] = np.sum(cur_top_k_label == cur_label)/top_k
+        # correct += np.sum(cur_top_k_label == cur_label)
+    # acc = correct / (n * top_k)
+    acc = np.mean(acc_query)
+    acc_std = np.std(acc_query)
     if verbose:
-        print("{}_top_{} precision={}".format(metric_name, top_k, precision))
-    return top_k_images, precision
+        print("{}_top_{} acc={}".format(metric_name, top_k, acc))
+    return top_k_images, acc, acc_std
 
 def save_images(data_name, data_a, data_b, top_k_images, metric_name, argparse):
     # save the top_k images for each image in the dataset
@@ -102,17 +106,18 @@ def print_retrival_comp(top_k_images, data_label_b):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n', type=int, default=20)
-    parser.add_argument('--delta', type=float, default=0.01)
-    parser.add_argument('--data_name', type=str, default='cifar10')
+    parser.add_argument('--n', type=int, default=50)
+    parser.add_argument('--delta', type=float, default=0.0001)
+    parser.add_argument('--data_name', type=str, default='mnist')
     parser.add_argument('--topk_st', type=int, default=1)
-    parser.add_argument('--topk_ed', type=int, default=10)
+    parser.add_argument('--topk_ed', type=int, default=100)
     parser.add_argument('--topk_d', type=int, default=1)
-    parser.add_argument('--noise', type=float, default=0.0)
-    parser.add_argument('--shift', type=int, default=0)
+    parser.add_argument('--noise', type=float, default=0.1)
+    parser.add_argument('--shift', type=int, default=2)
     parser.add_argument('--verbose', type=bool, default=False)
-    parser.add_argument('--metric_scaler', type=float, default=1.0)
-    parser.add_argument('--noise_type', type=str, default='blackout')
+    parser.add_argument('--metric_scaler', type=float, default=10.0)
+    parser.add_argument('--noise_type', type=str, default='rand1pxl')
+    parser.add_argument('--range_noise', type=int, default=0)
     args = parser.parse_args()
     print(args)
 
@@ -127,19 +132,28 @@ if __name__ == "__main__":
     metric_scaler = args.metric_scaler
     shift_pixel = args.shift
     noise_type = args.noise_type
+    range_noise = args.range_noise
     top_ks = np.arange(top_k_st, top_k_ed+top_k_d, top_k_d)
 
-    img_retrival_res = np.zeros((len(top_ks), 10))
+    img_retrival_acc = np.zeros((len(top_ks), 11))
+    img_retrival_acc_std = np.zeros((len(top_ks), 11))
     noise_ind = 0
-    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_sp_{}_nt_{}".format(n, delta, data_name, noise, metric_scaler, shift_pixel, noise_type)
+    argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_sp_{}_nt_{}_rangenoise_{}".format(n, delta, data_name, noise, metric_scaler, shift_pixel, noise_type, range_noise)
+    argparse_w1w2 = "n_{}_data_{}_noise_{}_sp_{}_nt_{}_rangenoise_{}_w1w2".format(n, data_name, noise, shift_pixel, noise_type, range_noise)
     print(argparse)
+    print(argparse_w1w2)
     data_name_ = 'OTP_lp_metric_{}'.format(argparse)
+    data_name_w1w2 = 'OTP_lp_metric_{}'.format(argparse_w1w2)
     try:
         data_a, data_b, data_label_a, data_label_b, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric = load_computed_matrix(n, data_name_)
     except:
         print("data {} not found, run gen_OTP_metric_matrix.py first".format(data_name_))
         exit(0)
-
+    try: 
+        data_a_, data_b_, data_label_a_, data_label_b_, w1, w2 = load_computed_matrix_w1w2(n, data_name_w1w2)
+    except:
+        print("data {} not found, run gen_w1w2_metric_matrix.py first".format(data_name_w1w2))
+        exit(0)
     top_ks_ind = 0
     for top_k in top_ks:
         noise = round(noise, 2)
@@ -154,46 +168,55 @@ if __name__ == "__main__":
         beta_normalized_maxdual: normalized_maxdual_OT at beta
         realtotalCost: real total OT cost
         '''
-        top_k_images, L1_precision = retrive_images(data_label_a, data_label_b, L1_metric, 'L1_metric', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 0] = L1_precision
+        top_k_images, L1_acc, L1_std = retrive_images(data_label_a, data_label_b, L1_metric, 'L1_metric', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 0] = L1_acc
+        img_retrival_acc_std[top_ks_ind, 0] = L1_std
         # save_images(data_name, data_a, data_b, top_k_images, 'L1_metric', argparse)
         # print_retrival_comp(top_k_images, data_label_b)
 
-        top_k_images, alpha_precision = retrive_images(data_label_a, data_label_b, alpha, 'distance_alpha', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 1] = alpha_precision
+        top_k_images, alpha_acc, alpha_std = retrive_images(data_label_a, data_label_b, alpha, 'distance_alpha', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 1] = alpha_acc
+        img_retrival_acc_std[top_ks_ind, 1] = alpha_std
         # save_images(data_name, data_a, data_b, top_k_images, 'distance_alpha', argparse)
         # print_retrival_comp(top_k_images, data_label)
 
-        top_k_images, alpha_OT_precision = retrive_images(data_label_a, data_label_b, alpha_OT, 'OT_at_alpha', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 2] = alpha_OT_precision
+        top_k_images, alpha_OT_acc, _ = retrive_images(data_label_a, data_label_b, alpha_OT, 'OT_at_alpha', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 2] = alpha_OT_acc
         # print_retrival_comp(top_k_images, data_label)
 
-        top_k_images, alpha_normalized_precision = retrive_images(data_label_a, data_label_b, alpha_normalized, 'distance_alpha_normalized', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 3] = alpha_normalized_precision
+        top_k_images, alpha_normalized_acc, _ = retrive_images(data_label_a, data_label_b, alpha_normalized, 'distance_alpha_normalized', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 3] = alpha_normalized_acc
         # print_retrival_comp(top_k_images, data_label)
 
-        top_k_images, alpha_normalized_OT_precision = retrive_images(data_label_a, data_label_b, alpha_normalized_OT, 'OT_at_alpha_normalized', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 4] = alpha_normalized_OT_precision
+        top_k_images, alpha_normalized_OT_acc, _ = retrive_images(data_label_a, data_label_b, alpha_normalized_OT, 'OT_at_alpha_normalized', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 4] = alpha_normalized_OT_acc
         # print_retrival_comp(top_k_images, data_label)
 
-        top_k_images, beta_precision = retrive_images(data_label_a, data_label_b, beta, 'distance_beta', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 5] = beta_precision
+        top_k_images, beta_acc, _ = retrive_images(data_label_a, data_label_b, beta, 'distance_beta', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 5] = beta_acc
         # print_retrival_comp(top_k_images, data_label)
 
-        top_k_images, beta_maxdual_precision = retrive_images(data_label_a, data_label_b, beta_maxdual, 'maxdual_at_beta', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 6] = beta_maxdual_precision
+        top_k_images, beta_maxdual_acc, _ = retrive_images(data_label_a, data_label_b, beta_maxdual, 'maxdual_at_beta', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 6] = beta_maxdual_acc
         # print_retrival_comp(top_k_images, data_label)
 
-        top_k_images, beta_normalized_precision = retrive_images(data_label_a, data_label_b, beta_normalized, 'distance_beta_normalized', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 7] = beta_normalized_precision
+        top_k_images, beta_normalized_acc, _ = retrive_images(data_label_a, data_label_b, beta_normalized, 'distance_beta_normalized', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 7] = beta_normalized_acc
         # print_retrival_comp(top_k_images, data_label)
 
-        top_k_images, beta_normalized_maxdual_precision = retrive_images(data_label_a, data_label_b, beta_normalized_maxdual, 'maxdual_at_beta_normalized', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 8] = beta_normalized_maxdual_precision
+        top_k_images, beta_normalized_maxdual_acc, _ = retrive_images(data_label_a, data_label_b, beta_normalized_maxdual, 'maxdual_at_beta_normalized', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 8] = beta_normalized_maxdual_acc
         # print_retrival_comp(top_k_images, data_label)
 
-        top_k_images, realtotalCost_precision = retrive_images(data_label_a, data_label_b, realtotalCost, 'real_total_OT_cost', top_k=top_k, verbose=verbose)
-        img_retrival_res[top_ks_ind, 9] = realtotalCost_precision
+        top_k_images, w2_acc, w2_std = retrive_images(data_label_a, data_label_b, w2, 'w2', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 9] = w2_acc
+        img_retrival_acc_std[top_ks_ind, 9] = w2_std
+        # print("w2_top_{} acc={}".format(top_k, w2_acc))
+
+        top_k_images, w1_acc, w1_std = retrive_images(data_label_a, data_label_b, w1, 'w1', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 10] = w1_acc
+        img_retrival_acc_std[top_ks_ind, 10] = w1_std
+        # print("w1_top_{} acc={}".format(top_k, w1_acc))
         # save_images(data_name, data_a, data_b, top_k_images, 'real_total_OT_cost', argparse)
         # print_retrival_comp(top_k_images, data_label)
         top_ks_ind += 1
@@ -201,29 +224,34 @@ if __name__ == "__main__":
     # plot the precision vs top_k with different metrics, two subplots 
     # one for alpha beta ..., one for OT at alpha, maxdual at beta, etc
     # plt width 10, height 5
+    color_codes = ['b', 'g', 'c', 'm', 'y', 'k', 'w']
     plts.figure()
-    plts.figure(figsize=(10,5))
-    plts.subplot(1,2,1)
-    plts.plot(top_ks, img_retrival_res[:, 0], label='L1_metric')
-    plts.plot(top_ks, img_retrival_res[:, 1], label='distance_alpha')
-    # plts.plot(top_ks, img_retrival_res[:, 3], label='distance_alpha_normalized')
-    # plts.plot(top_ks, img_retrival_res[:, 5], label='distance_beta')
-    # plts.plot(top_ks, img_retrival_res[:, 7], label='distance_beta_normalized')
-    plts.plot(top_ks, img_retrival_res[:, 9], label='real_total_OT_cost')
-    plts.xlabel('image retrived')
-    plts.ylabel('precision')
+    plts.figure(figsize=(6,6))
+    plts.plot(top_ks, img_retrival_acc[:, 0], label='TV', color='orange')
+    # plts.fill_between(top_ks, img_retrival_acc[:, 0]-img_retrival_acc_std[:, 0], img_retrival_acc[:, 0]+img_retrival_acc_std[:, 0], color='g', alpha=0.2)
+    plts.plot(top_ks, img_retrival_acc[:, 1], label='(2,{})-RPW'.format(float(1/metric_scaler)), color='b')
+    # plts.fill_between(top_ks, img_retrival_acc[:, 1]-img_retrival_acc_std[:, 1], img_retrival_acc[:, 1]+img_retrival_acc_std[:, 1], alpha=0.2, color='b')
+    # plts.plot(top_ks, img_retrival_acc[:, 3], label='distance_alpha_normalized')
+    # plts.plot(top_ks, img_retrival_acc[:, 5], label='distance_beta')
+    # plts.plot(top_ks, img_retrival_acc[:, 7], label='distance_beta_normalized')
+    plts.plot(top_ks, img_retrival_acc[:, 9], label='2-Wasserstein', color='r')
+    plts.plot(top_ks, img_retrival_acc[:, 10], label='1-Wasserstein', color='purple')
+    # plts.fill_between(top_ks, img_retrival_acc[:, 9]-img_retrival_acc_std[:, 9], img_retrival_acc[:, 9]+img_retrival_acc_std[:, 9], alpha=0.2, color='r')
+    plts.xlabel('Number of images retrieved')
+    plts.ylabel('Accuracy')
+    # plts.title("Image retrival, {}, delta={}".format(title, delta))
     plts.legend()
-    plts.subplot(1,2,2)
-    plts.plot(top_ks, img_retrival_res[:, 0], label='L1_metric')
-    plts.plot(top_ks, img_retrival_res[:, 2], label='OT_at_alpha')
-    # plts.plot(top_ks, img_retrival_res[:, 4], label='OT_at_alpha_normalized')
-    # plts.plot(top_ks, img_retrival_res[:, 6], label='maxdual_at_beta')
-    # plts.plot(top_ks, img_retrival_res[:, 8], label='maxdual_at_beta_normalized')
-    plts.plot(top_ks, img_retrival_res[:, 9], label='real_total_OT_cost')
-    plts.xlabel('image retrived')
-    plts.ylabel('precision')
-    plts.legend()
-    plts.savefig("./results/img_retrival_res_{}_topk_vs_acc.png".format(argparse))
+    # plts.subplot(1,2,2)
+    # plts.plot(top_ks, img_retrival_acc[:, 0], label='L1_metric')
+    # plts.plot(top_ks, img_retrival_acc[:, 2], label='OT_at_alpha')
+    # # plts.plot(top_ks, img_retrival_acc[:, 4], label='OT_at_alpha_normalized')
+    # # plts.plot(top_ks, img_retrival_acc[:, 6], label='maxdual_at_beta')
+    # # plts.plot(top_ks, img_retrival_acc[:, 8], label='maxdual_at_beta_normalized')
+    # plts.plot(top_ks, img_retrival_acc[:, 9], label='real_total_OT_cost')
+    # plts.xlabel('image retrived')
+    # plts.ylabel('precision')
+    # plts.legend()
+    plts.savefig("./results/img_retrival_acc_{}_topk_vs_acc.png".format(argparse), transparent=True)
     plts.close()
 
-    np.savetxt("./results/img_retrival_res_{}_topk_vs_acc.csv".format(argparse), img_retrival_res, delimiter=",")
+    np.savetxt("./results/img_retrival_acc_{}_topk_vs_acc.csv".format(argparse), img_retrival_acc, delimiter=",")

@@ -8,7 +8,7 @@ import argparse
 import matplotlib.pyplot as plts
 import pandas as pd
 from scipy.spatial.distance import cdist
-from utils import load_data, load_computed_matrix, load_computed_matrix_w1w2
+from utils import load_data, load_computed_matrix, load_computed_matrix_p1p2
 import os
 
 import warnings
@@ -135,24 +135,42 @@ if __name__ == "__main__":
     range_noise = args.range_noise
     top_ks = np.arange(top_k_st, top_k_ed+top_k_d, top_k_d)
 
-    img_retrival_acc = np.zeros((len(top_ks), 11))
-    img_retrival_acc_std = np.zeros((len(top_ks), 11))
+    img_retrival_acc = np.zeros((len(top_ks), 13))
+    img_retrival_acc_std = np.zeros((len(top_ks), 13))
     noise_ind = 0
     argparse = "n_{}_delta_{}_data_{}_noise_{}_ms_{}_sp_{}_nt_{}_rangenoise_{}".format(n, delta, data_name, noise, metric_scaler, shift_pixel, noise_type, range_noise)
     argparse_w1w2 = "n_{}_data_{}_noise_{}_sp_{}_nt_{}_rangenoise_{}_w1w2".format(n, data_name, noise, shift_pixel, noise_type, range_noise)
+    argparse_ROBOT12 = "n_{}_data_{}_noise_{}_sp_{}_nt_{}_rangenoise_{}_ROBOT".format(n, data_name, noise, shift_pixel, noise_type,range_noise)
     print(argparse)
     print(argparse_w1w2)
+    print(argparse_ROBOT12)
     data_name_ = 'OTP_lp_metric_{}'.format(argparse)
     data_name_w1w2 = 'OTP_lp_metric_{}'.format(argparse_w1w2)
+    data_name_ROBOT12 = 'OTP_lp_metric_{}'.format(argparse_ROBOT12)
     try:
         data_a, data_b, data_label_a, data_label_b, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric = load_computed_matrix(n, data_name_)
     except:
         print("data {} not found, run gen_OTP_metric_matrix.py first".format(data_name_))
         exit(0)
     try: 
-        data_a_, data_b_, data_label_a_, data_label_b_, w1, w2 = load_computed_matrix_w1w2(n, data_name_w1w2)
+        data_a_, data_b_, data_label_a_, data_label_b_, w1, w2 = load_computed_matrix_p1p2(n, data_name_w1w2)
     except:
         print("data {} not found, run gen_w1w2_metric_matrix.py first".format(data_name_w1w2))
+        exit(0)
+    try:
+        data_a_ROBOT, data_b_ROBOT, data_label_a_ROBOT, data_label_b_ROBOT, ROBOT1, ROBOT2 = load_computed_matrix_p1p2(n, data_name_ROBOT12)
+    except:
+        print("data {} not found, run gen_ROBOT_metric_matrix_IR.py first".format(data_name_ROBOT12))
+        exit(0)
+    # test if label size is the same, if not, print the size
+    if data_label_a.shape != data_label_a_.shape:
+        print("data size not matched, RPW_metric shape: {}, w1w2_metric shape: {}".format(data_label_a.shape, data_label_a_.shape))
+        exit(0)
+    if data_label_b.shape != data_label_b_.shape:
+        print("shape size not matched, RPW_metric shape: {}, w1w2_metric shape: {}".format(data_label_b.shape, data_label_b_.shape))
+        exit(0)
+    if data_label_a.shape != data_label_a_ROBOT.shape:
+        print("data size not matched, RPW_metric shape: {}, ROBOT12_metric shape: {}".format(data_label_a.shape, data_label_a_ROBOT.shape))
         exit(0)
     top_ks_ind = 0
     for top_k in top_ks:
@@ -208,17 +226,26 @@ if __name__ == "__main__":
         img_retrival_acc[top_ks_ind, 8] = beta_normalized_maxdual_acc
         # print_retrival_comp(top_k_images, data_label)
 
-        top_k_images, w2_acc, w2_std = retrive_images(data_label_a, data_label_b, w2, 'w2', top_k=top_k, verbose=verbose)
-        img_retrival_acc[top_ks_ind, 9] = w2_acc
-        img_retrival_acc_std[top_ks_ind, 9] = w2_std
-        # print("w2_top_{} acc={}".format(top_k, w2_acc))
-
         top_k_images, w1_acc, w1_std = retrive_images(data_label_a, data_label_b, w1, 'w1', top_k=top_k, verbose=verbose)
-        img_retrival_acc[top_ks_ind, 10] = w1_acc
-        img_retrival_acc_std[top_ks_ind, 10] = w1_std
+        img_retrival_acc[top_ks_ind, 9] = w1_acc
+        img_retrival_acc_std[top_ks_ind, 9] = w1_std
         # print("w1_top_{} acc={}".format(top_k, w1_acc))
         # save_images(data_name, data_a, data_b, top_k_images, 'real_total_OT_cost', argparse)
         # print_retrival_comp(top_k_images, data_label)
+
+        top_k_images, w2_acc, w2_std = retrive_images(data_label_a, data_label_b, w2, 'w2', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 10] = w2_acc
+        img_retrival_acc_std[top_ks_ind, 10] = w2_std
+        # print("w2_top_{} acc={}".format(top_k, w2_acc))
+
+        top_k_images, ROBOT1_acc, ROBOT1_std = retrive_images(data_label_a, data_label_b, ROBOT1, 'ROBOT1', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 11] = ROBOT1_acc
+        img_retrival_acc_std[top_ks_ind, 11] = ROBOT1_std
+
+        top_k_images, ROBOT2_acc, ROBOT2_std = retrive_images(data_label_a, data_label_b, ROBOT2, 'ROBOT2', top_k=top_k, verbose=verbose)
+        img_retrival_acc[top_ks_ind, 12] = ROBOT2_acc
+        img_retrival_acc_std[top_ks_ind, 12] = ROBOT2_std
+
         top_ks_ind += 1
 
     # plot the precision vs top_k with different metrics, two subplots 
@@ -234,13 +261,15 @@ if __name__ == "__main__":
     # plts.plot(top_ks, img_retrival_acc[:, 3], label='distance_alpha_normalized')
     # plts.plot(top_ks, img_retrival_acc[:, 5], label='distance_beta')
     # plts.plot(top_ks, img_retrival_acc[:, 7], label='distance_beta_normalized')
-    plts.plot(top_ks, img_retrival_acc[:, 9], label='2-Wasserstein', color='r')
-    plts.plot(top_ks, img_retrival_acc[:, 10], label='1-Wasserstein', color='purple')
+    plts.plot(top_ks, img_retrival_acc[:, 9], label='1-Wasserstein', color='purple')
+    plts.plot(top_ks, img_retrival_acc[:, 10], label='2-Wasserstein', color='r')
+    plts.plot(top_ks, img_retrival_acc[:, 11], label='1-ROBOT', color='g')
+    plts.plot(top_ks, img_retrival_acc[:, 12], label='2-ROBOT', color='c')
     # plts.fill_between(top_ks, img_retrival_acc[:, 9]-img_retrival_acc_std[:, 9], img_retrival_acc[:, 9]+img_retrival_acc_std[:, 9], alpha=0.2, color='r')
-    plts.xlabel('Number of images retrieved')
-    plts.ylabel('Accuracy')
+    plts.xlabel('Number of images retrieved',fontsize=14)    
+    plts.ylabel('Accuracy',fontsize=14)
     # plts.title("Image retrival, {}, delta={}".format(title, delta))
-    plts.legend()
+    plts.legend(fontsize=14)
     # plts.subplot(1,2,2)
     # plts.plot(top_ks, img_retrival_acc[:, 0], label='L1_metric')
     # plts.plot(top_ks, img_retrival_acc[:, 2], label='OT_at_alpha')
@@ -252,6 +281,7 @@ if __name__ == "__main__":
     # plts.ylabel('precision')
     # plts.legend()
     plts.savefig("./results/img_retrival_acc_{}_topk_vs_acc.png".format(argparse), transparent=True)
+    plts.savefig("./img_retrival_acc_{}_topk_vs_acc.png".format(argparse), transparent=True)
     plts.close()
 
     np.savetxt("./results/img_retrival_acc_{}_topk_vs_acc.csv".format(argparse), img_retrival_acc, delimiter=",")

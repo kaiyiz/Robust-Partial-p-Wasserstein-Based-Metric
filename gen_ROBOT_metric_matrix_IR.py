@@ -14,12 +14,15 @@ Relevant parts of the code have been adapted from :
 https://github.com/debarghya-mukherjee/Robust-Optimal-Transport/blob/main/ROBOT_mnist_outlier_detection.py
 """
 
-def w1w2metric(X=None, Y=None, dist=None, all_res=None, i=0, j=0, time_start=None):
-    # dist : ground distance, eucledian distance
-    w1 = ot.emd2(X, Y, dist)
-    w2 =np.sqrt(ot.emd2(X, Y, dist**2))
-    # realtotalCost = gtSolver.getTotalCost()
-
+def ROBOTmetric(X=None, Y=None, dist=None, all_res=None, i=0, j=0, time_start=None):
+    truncated_dist1 = dist.copy()
+    truncated_dist2 = dist**2
+    lambda_1 = lambda_matrix[i,j,0]
+    lambda_2 = lambda_matrix[i,j,1]
+    truncated_dist1[truncated_dist1 > lambda_1] = lambda_1
+    truncated_dist2[truncated_dist2 > lambda_2] = lambda_2
+    ROBOT1 = ot.emd2(X, Y, truncated_dist1)
+    ROBOT2 = np.sqrt(ot.emd2(X, Y, truncated_dist2))
     if j == 0:
         size = all_res.shape
         time_cur = time.time()
@@ -27,19 +30,28 @@ def w1w2metric(X=None, Y=None, dist=None, all_res=None, i=0, j=0, time_start=Non
         time_spent = time_cur - time_start
         total_time = time_spent/(amount_of_work_done/(size[0]*size[1]))
         print("estimate to finish the job in {}s".format(total_time-time_spent))
+    all_res[i,j,:] = np.array([ROBOT1, ROBOT2])
 
-    all_res[i,j,:] = np.array([w1, w2])
+def get_lamnbda(dist, plan):
+    lambda_val = 0.5 * np.max(dist[plan > 0])
+    return lambda_val
 
-def find_intersection_point(x1, y1, x2, y2):
-    # x1 < x2
-    # y1 > 0
-    # y2 < 0
-    # y = ax + b
-    # find x when y = 0
-    a = (y2-y1)/(x2-x1)
-    b = y1 - a*x1
-    x = -b/a
-    return x
+def get_lambda_matrix(X=None, Y=None, dist=None, all_res=None, i=0, j=0, time_start=None):
+    # dist : ground distance, eucledian distance
+    w1_plan = ot.emd(X, Y, dist)
+    w2_plan =ot.emd(X, Y, dist**2)
+    lambda_w1 = get_lamnbda(dist, w1_plan)
+    lambda_w2 = get_lamnbda(dist**2, w2_plan)
+
+    if j == 0:
+        size = all_res.shape
+        time_cur = time.time()
+        amount_of_work_done = i*size[1] + 1
+        time_spent = time_cur - time_start
+        total_time = time_spent/(amount_of_work_done/(size[0]*size[1]))
+        print("estimate to calculate all lambda in {}s".format(total_time-time_spent))
+
+    lambda_matrix[i,j,:] = np.array([lambda_w1, lambda_w2])
 
 if __name__ == "__main__":
     # LOAD Data
@@ -62,11 +74,12 @@ if __name__ == "__main__":
     noise_type = args.noise_type
     k = args.k
     range_noise = args.range_noise
-    argparse = "n_{}_data_{}_noise_{}_sp_{}_nt_{}_rangenoise_{}_w1w2".format(n, data_name, noise, shift_pixel, noise_type,range_noise)
+    argparse = "n_{}_data_{}_noise_{}_sp_{}_nt_{}_rangenoise_{}_ROBOT".format(n, data_name, noise, shift_pixel, noise_type,range_noise)
 
     data, data_labels = load_data(data_name)
     data_size = int(data.shape[0]/k)
     all_res = np.zeros((n,data_size,2))
+    lambda_matrix = np.zeros((n,data_size,2))
     print("data size: {}".format(all_res.shape))
 
     if data_name == "mnist" or data_name == "fashion_mnist":
@@ -78,7 +91,8 @@ if __name__ == "__main__":
         # data_pick_a = shift_image(data_pick_a, shift_pixel)
         dist = get_ground_dist(data_pick_a[0,:], data_pick_b[1,:], 'fixed_bins_2d', metric='euclidean')
         start_time = time.time()
-        Parallel(n_jobs=-1, prefer="threads")(delayed(w1w2metric)(data_pick_a[i,:], data_pick_b[j,:], dist, all_res, i, j, start_time) for i in range(n) for j in range(data_size))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(get_lambda_matrix)(data_pick_a[i,:], data_pick_b[j,:], dist, lambda_matrix, i, j, start_time) for i in range(n) for j in range(data_size))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(ROBOTmetric)(data_pick_a[i,:], data_pick_b[j,:], dist, all_res, i, j, start_time) for i in range(n) for j in range(data_size))
         end_time = time.time()
     elif data_name == "cifar10":
         start_time = time.time()
@@ -93,7 +107,8 @@ if __name__ == "__main__":
         b = np.ones(m)/m
         diam_color = 3
         lamda = 0.5
-        Parallel(n_jobs=-1, prefer="threads")(delayed(w1w2metric)(a, b, get_ground_dist(data_pick_a[i,:], data_pick_b[j,:], transport_type="high_dim", metric='euclidean', diam=diam_color) + lamda*geo_dist, all_res, i, j, start_time) for i in range(n) for j in range(data_size))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(get_lambda_matrix)(a, b, get_ground_dist(data_pick_a[i,:], data_pick_b[j,:], transport_type="high_dim", metric='euclidean', diam=diam_color) + lamda*geo_dist, lambda_matrix, i, j, start_time) for i in range(n) for j in range(data_size))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(ROBOTmetric)(a, b, get_ground_dist(data_pick_a[i,:], data_pick_b[j,:], transport_type="high_dim", metric='euclidean', diam=diam_color) + lamda*geo_dist, all_res, i, j, start_time) for i in range(n) for j in range(data_size))
         end_time = time.time()
     else:
         raise ValueError("data not found")

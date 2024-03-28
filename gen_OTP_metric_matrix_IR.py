@@ -138,7 +138,7 @@ if __name__ == "__main__":
     all_res = np.zeros((n,data_size,10))
     print("data size: {}".format(all_res.shape))
 
-    if data_name == "mnist":
+    if data_name == "mnist" or data_name == "fashion_mnist":
         data_pick_a, data_pick_label_a = rand_pick_mnist(data, data_labels, n, 0)
         data_pick_b, data_pick_label_b = rand_pick_mnist(data, data_labels, data_size, 1)
         data_pick_b = add_noise(data_pick_b, noise_type = noise_type, noise_level=noise, range_noise=range_noise)

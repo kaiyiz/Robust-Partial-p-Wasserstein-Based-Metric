@@ -4,8 +4,8 @@ from scipy.stats import norm, multivariate_normal
 from scipy.spatial.distance import cdist
 import tensorflow as tf
 
-def load_computed_matrix(n, dataset_name):
-    npzfiles = np.load('./results/{}.npz'.format(dataset_name))
+def load_computed_matrix(n, dataset_name, path='./results'):
+    npzfiles = np.load('{}/{}.npz'.format(path, dataset_name))
     all_res = npzfiles['all_res']
     data_label_a = npzfiles['data_pick_label_a']
     data_label_b = npzfiles['data_pick_label_b']
@@ -23,7 +23,18 @@ def load_computed_matrix(n, dataset_name):
     L1_metric = all_res[:,:,9]
     return  data_a, data_b, data_label_a, data_label_b, alpha, alpha_OT, alpha_normalized, alpha_normalized_OT, beta, beta_maxdual, beta_normalized, beta_normalized_maxdual, realtotalCost, L1_metric
 
-def add_noise(data, noise_type = "uniform", noise_level=0.1):
+def load_computed_matrix_p1p2(n, dataset_name, path='./results'):
+    npzfiles = np.load('{}/{}.npz'.format(path, dataset_name))
+    all_res = npzfiles['all_res']
+    data_label_a = npzfiles['data_pick_label_a']
+    data_label_b = npzfiles['data_pick_label_b']
+    data_a = npzfiles['data_a']
+    data_b = npzfiles['data_b']
+    w1 = all_res[:,:,0]
+    w2 = all_res[:,:,1]
+    return  data_a, data_b, data_label_a, data_label_b, w1, w2
+
+def add_noise(data, noise_type = "uniform", noise_level=0.1, range_noise=True):
     m = data.shape[0]
     n = data.shape[1]
     if noise_type == "uniform":
@@ -70,7 +81,13 @@ def add_noise(data, noise_type = "uniform", noise_level=0.1):
             noise[i,mu] = 1
     else:
         raise ValueError("noise type not found")
-    data = (1 - noise_level) * data + noise_level * noise
+    # make noise level the same size as data and adding variance to noise level, say as noise_level=0.1, we are actually adding noise from 0.05 to 0.15 randomly
+    if range_noise:
+        rand_range = 0.1
+        low = noise_level-rand_range if noise_level>=0.05 else 0
+        high = noise_level+rand_range if noise_level<=(1-rand_range) else 1
+        noise_level = np.random.uniform(low, high, m).reshape(-1,1)
+    data = data*(1-noise_level) + noise_level*noise
     return data
 
 def add_noise_3d_matching(data, noise_type = "uniform", noise_level=0.1):
@@ -215,6 +232,14 @@ def load_data(data_name):
             (data, data_labels), (_, _) = tf.keras.datasets.cifar10.load_data()
             np.save('./data/cifar10.npy', data)
             np.save('./data/cifar10_labels.npy', data_labels)
+    elif data_name == 'fashion_mnist':
+        if os.path.exists('./data/fashion_mnist.npy'):
+            data = np.load('./data/fashion_mnist.npy')
+            data_labels = np.load('./data/fashion_mnist_labels.npy').ravel().astype(int)
+        else:
+            (data, data_labels), (_, _) = tf.keras.datasets.fashion_mnist.load_data()
+            np.save('./data/fashion_mnist.npy', data)
+            np.save('./data/fashion_mnist_labels.npy', data_labels)
     else:
         raise ValueError("data_name not found")
 

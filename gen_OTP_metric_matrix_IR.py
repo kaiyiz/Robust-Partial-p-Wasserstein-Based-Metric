@@ -149,7 +149,7 @@ if __name__ == "__main__":
         start_time = time.time()
         Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(data_pick_a[i,:], data_pick_b[j,:], dist, delta, metric_scaler, all_res, i, j, start_time) for i in range(n) for j in range(data_size))
         end_time = time.time()
-    elif data_name == "cifar10":
+    elif data_name == "cifar10" or data_name == "coral":
         start_time = time.time()
         data_pick_a, data_pick_label_a = rand_pick_cifar10(data, data_labels, n, 0)
         data_pick_b, data_pick_label_b = rand_pick_cifar10(data, data_labels, data_size, 1)

@@ -240,6 +240,12 @@ def load_data(data_name):
             (data, data_labels), (_, _) = tf.keras.datasets.fashion_mnist.load_data()
             np.save('./data/fashion_mnist.npy', data)
             np.save('./data/fashion_mnist_labels.npy', data_labels)
+    elif data_name == 'coral':
+        if os.path.exists('./data/coral.npy'):
+            data = np.load('./data/coral.npy')
+            data_labels = np.load('./data/coral_labels.npy').ravel().astype(int)
+        else:
+            print("Coral dataset not found")
     else:
         raise ValueError("data_name not found")
 

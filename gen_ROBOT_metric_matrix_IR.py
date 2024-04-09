@@ -94,7 +94,7 @@ if __name__ == "__main__":
         Parallel(n_jobs=-1, prefer="threads")(delayed(get_lambda_matrix)(data_pick_a[i,:], data_pick_b[j,:], dist, lambda_matrix, i, j, start_time) for i in range(n) for j in range(data_size))
         Parallel(n_jobs=-1, prefer="threads")(delayed(ROBOTmetric)(data_pick_a[i,:], data_pick_b[j,:], dist, all_res, i, j, start_time) for i in range(n) for j in range(data_size))
         end_time = time.time()
-    elif data_name == "cifar10":
+    elif data_name == "cifar10" or data_name == "coral":
         start_time = time.time()
         data_pick_a, data_pick_label_a = rand_pick_cifar10(data, data_labels, n, 0)
         data_pick_b, data_pick_label_b = rand_pick_cifar10(data, data_labels, data_size, 1)

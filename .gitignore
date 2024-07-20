@@ -3,8 +3,8 @@ data/
 results/
 ICML/
 archive/
+sh/
 __pycache__
-*.sh
 *.out
 *.zip
 *.png

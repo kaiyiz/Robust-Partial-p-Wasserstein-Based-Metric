@@ -1,6 +1,7 @@
 import ot
 import numpy as np
 import time
+import argparse
 import matplotlib.pyplot as plt
 from skimage.transform import resize
 
@@ -54,6 +55,7 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, i=0, sqrt_
     # delta : acceptable additive error
     # q_idx : index to get returned values
     nz = len(X)
+    alphaa = 4.0*np.max(dist)/delta
     gtSolver = Mapping(nz, list(X), list(Y), dist, delta)
     APinfo = np.array(gtSolver.getAPinfo())
 
@@ -61,29 +63,18 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, i=0, sqrt_
     clean_mask = (APinfo[:,2] >= 1)
     APinfo_cleaned = APinfo[clean_mask]
 
+    # APinfo_cleaned[:,4] = APinfo_cleaned[:,4] - 1
     cost_AP = APinfo_cleaned[:,4] * APinfo_cleaned[:,2]
     cumCost = np.cumsum(cost_AP)
-    if sqrt_cost:
-        cumCost = np.sqrt(cumCost)
     real_total_cost = gtSolver.getTotalCost()
     if real_total_cost == 0:
         cumCost = cumCost * 0.0
     else:
         cumCost = cumCost / (cumCost[-1] / real_total_cost)
-    cumCost *= metric_scaler
-    totalCost = cumCost[-1]
-    if totalCost == 0:
-        normalized_cumcost = (cumCost) * 0.0
-    else:
-        normalized_cumcost = (cumCost)/(1.0 * totalCost)
+    if sqrt_cost:
+        cumCost = np.sqrt(cumCost)
 
-    alphaa = 4.0*np.max(dist)/delta
-    maxdual = APinfo_cleaned[:,4]/alphaa*metric_scaler
-    final_dual = maxdual[-1]
-    if final_dual == 0:
-        normalized_maxdual = maxdual * 0.0
-    else:
-        normalized_maxdual = maxdual/final_dual
+    cumCost *= metric_scaler
 
     cumFlow = np.cumsum((APinfo_cleaned[:,2]).astype(int))
     totalFlow = cumFlow[-1]
@@ -93,13 +84,12 @@ def OTP_metric(X=None, Y=None, dist=None, delta=0.1, metric_scaler=1, i=0, sqrt_
     d_ind_a = np.nonzero(d_cost<=0)[0][0]-1
     d_ind_b = d_ind_a + 1
     alpha = find_intersection_point(flowProgress[d_ind_a], d_cost[d_ind_a], flowProgress[d_ind_b], d_cost[d_ind_b])
-    alpha_OT = cumCost[d_ind_a] + (cumCost[d_ind_b]-cumCost[d_ind_a])*(alpha-flowProgress[d_ind_a])/(flowProgress[d_ind_b]-flowProgress[d_ind_a])
     alpha = 1 - alpha
 
     # dual weights at alpha, dual_weights_at_alpha_X > 0, dual_weights_at_alpha_X < 0, late in the matching means higher value
-    iter_idx = APinfo_cleaned[d_ind_b, :][0]-1
-    dual_weights_at_alpha_X, dual_weights_at_alpha_Y = np.split(np.array(gtSolver.getDual(iter_idx)), 2)
-    dual_weights_at_alpha_X = dual_weights_at_alpha_X/(alphaa+dual_weights_at_alpha_X.max()) # late in the matching means higher value
+    iter_idx = APinfo_cleaned[d_ind_b, :][0]
+    dual_weights_at_alpha_X, dual_weights_at_alpha_Y = np.split((np.array(gtSolver.getDual(iter_idx))+np.array(gtSolver.getDual(iter_idx-1)))/(2*alphaa), 2)
+    dual_weights_at_alpha_X = dual_weights_at_alpha_X/(1+dual_weights_at_alpha_X.max()) # late in the matching means higher value
     # dual_weights_at_alpha_Y = dual_weights_at_alpha_Y/dual_weights_at_alpha_Y.min() # late in the matching means lower value
     potentials[i,:] = dual_weights_at_alpha_X
 
@@ -124,7 +114,7 @@ def create_digits_image(images, labels, digit=0, grid_size=64, n_digits=15, orig
 
 
 
-def fixed_support_barycenter_OTP_metric(B, M, weights=None, eta=10, numItermax=100, stopThr=1e-9, verbose=False, norm='max'):
+def fixed_support_barycenter_OTP_metric(B, M, weights=None, eta=10, numItermax=100, stopThr=1e-9, verbose=False, norm='max', ms = 1, argparse = None, sqrt_cost = False):
     """Fixed Support Wasserstein Barycenter
 
     We follow the Algorithm 1. of [1], into calculating the Wasserstein barycenter of N measures over a pre-defined
@@ -168,7 +158,7 @@ def fixed_support_barycenter_OTP_metric(B, M, weights=None, eta=10, numItermax=1
         # potentials = np.zeros(B.shape)
         # potentials = []
         time_st = time.time()
-        Parallel(n_jobs=2, prefer="threads")(delayed(OTP_metric)(X=a, Y=B[i], dist=_M, delta=0.1, metric_scaler=1, i=i, sqrt_cost=True) for i in range(B.shape[0]))
+        Parallel(n_jobs=-1, prefer="threads")(delayed(OTP_metric)(X=a, Y=B[i], dist=_M, delta=0.001, metric_scaler=ms, i=i, sqrt_cost=sqrt_cost) for i in range(B.shape[0]))
         time_end = time.time()
         print("OTP time: {}".format(time_end-time_st))
         # for i in range(B.shape[0]):
@@ -196,10 +186,10 @@ def fixed_support_barycenter_OTP_metric(B, M, weights=None, eta=10, numItermax=1
         # Update previous a
         a_prev = a.copy()
         # save the image every 10 iterations
-        if k % 10 == 0:
+        if k % 50 == 0:
             plt.imshow(a.reshape(grid_size, grid_size), cmap='gray')
             plt.axis('off')
-            plt.savefig('./results/figs/{}_{}_{}_{}_{}_{}_{}_{}.png'.format(digit, grid_size, n_digits, original_size, is_distribution, 'fixed_support_barycenter_OTP_metric', 'fixed_support_barycenter_Wasserstein', k), bbox_inches='tight')
+            plt.savefig('./results/figs/barycenter_{}_iter{}.png'.format(argparse,k), bbox_inches='tight')
     return a
 
 def fixed_support_barycenter_Wasserstein(B, M, weights=None, eta=10, numItermax=100, stopThr=1e-9, verbose=False, norm='max'):
@@ -269,26 +259,53 @@ def fixed_support_barycenter_Wasserstein(B, M, weights=None, eta=10, numItermax=
         a_prev = a.copy()
     return a
 
-digit = 3
-grid_size = 64
-n_digits = 15
-original_size = 20
-is_distribution = True
+parser = argparse.ArgumentParser()
+parser.add_argument('--digit', type=int, default=3)
+parser.add_argument('--grid_size', type=int, default=64)
+parser.add_argument('--n_digits', type=int, default=15)
+parser.add_argument('--original_size', type=int, default=20)
+parser.add_argument('--is_distribution', type=bool, default=True)
+parser.add_argument('--metric', type=str, default='sqeuclidean')
+parser.add_argument('--noise', type=float, default=0)
+parser.add_argument('--ms', type=float, default=10)
+parser.add_argument('--sqrt_cost', type=bool, default=True)
+parser.add_argument('--eta', type=float, default=1)
+parser.add_argument('--max_iter', type=int, default=2000)
+
+args = parser.parse_args()
+
+digit = args.digit
+grid_size = args.grid_size
+n_digits = args.n_digits
+original_size = args.original_size
+is_distribution = args.is_distribution
+metric = args.metric
+noise = args.noise
+ms = args.ms
+sqrt_cost = args.sqrt_cost
+eta = args.eta
+max_iter = args.max_iter
+
+argparse = "digit{}_grid_size_{}_n_digits_{}_metric_{}_noise_{}_ms_{}_sqrt_cost_{}".format(digit, grid_size, n_digits, metric, noise, ms, sqrt_cost)
+print(argparse)
 
 images, labels = load_data('mnist')
 images = images.astype(float).reshape(-1, 28, 28) / 255
 
+np.random.seed(0)
 B = create_digits_image(images, labels,
                         digit=digit,
                         grid_size=grid_size,
                         n_digits=n_digits,
                         original_size=original_size,
-                        is_distribution=is_distribution)
+                        is_distribution=is_distribution,
+                        )
+B = add_noise(B, "rand1pxl", noise)
 potentials = np.zeros(B.shape)
 
-M = get_ground_dist(B[0,:], B[0,:], 'fixed_bins_2d', metric='sqeuclidean')
+M = get_ground_dist(B[0,:], B[0,:], 'fixed_bins_2d', metric=metric)
 
-a_OTP_metric = fixed_support_barycenter_OTP_metric(B, M, eta=1, numItermax=2000, stopThr=1e-9, verbose=True)
+a_OTP_metric = fixed_support_barycenter_OTP_metric(B, M, eta=eta, numItermax=max_iter, stopThr=1e-9, verbose=True, ms=ms, argparse=argparse, sqrt_cost=sqrt_cost)
 # a_OTP_metric = B
 a_wasserstein = fixed_support_barycenter_Wasserstein(B, M, verbose=True)
 
@@ -301,4 +318,4 @@ axes[2].imshow(a_OTP_metric.reshape(grid_size, grid_size), cmap='gray')
 axes[2].axis('off')
 
 # save
-plt.savefig('./results/figs/{}_{}_{}_{}_{}_{}_{}.png'.format(digit, grid_size, n_digits, original_size, is_distribution, 'fixed_support_barycenter_OTP_metric', 'fixed_support_barycenter_Wasserstein'), bbox_inches='tight')
+plt.savefig('./results/figs/barycenter_{}.png'.format(argparse), bbox_inches='tight')

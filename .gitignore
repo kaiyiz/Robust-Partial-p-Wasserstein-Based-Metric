@@ -1,5 +1,11 @@
 .vscode/
 data/
 results/
+ICML/
+archive/
+__pycache__
 *.sh
 *.out
+*.zip
+*.png
+*.log
